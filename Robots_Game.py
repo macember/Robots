@@ -337,3 +337,4 @@ def simulateFromLog(logFile):
     #writeLogToFile("output.txt", board.log)
     pygame.quit()    
     
+#Christina (but not actually christina) was here
