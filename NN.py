@@ -66,7 +66,7 @@ class NN:
         for i in range(1,len(layers)):
             for j in range(0, layers[i]*layers[i+1]):
                 print('test')
-            #    allConnections.append(
+                allConnections.append(random.uniform(-1,1))
 
         nodeIndex = 1
         layerNumber = 0
@@ -75,7 +75,7 @@ class NN:
             for i in range(1, layer+1):
                      nodexIndex+=1
                      n = node(nodeNames[nodeIndex], layerNumber)
-                     #n.connections = 
+ #                    n.connections = 
                      
             
     def printNN(self):
