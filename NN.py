@@ -17,7 +17,6 @@ def cumulativeLayers(layers):
     return retLayers
 
 class Node:
-   # def __init__(self, Name, Layer=0, Delta=0, Connections={}):
     def __init__(self, Name):
         self.name = Name        #name of node (used for indexing)
         self.layer = 0
@@ -57,11 +56,11 @@ class NN:
         self.DNA = dna       #encoded __dict__ of class
         random.seed()        #seed random number generator
         self.layersSize = [] #size of each layer, e.g. [4,3,2] has 4 input, 3 middle, 2 output
-        self.layers = []    #List-of-lists. names of each node in each layer. e.g. [ ['a','b','c'] , ['d','e'], ['f'] ]
+        self.layers = []    #List-of-lists. Each node object in each layer. e.g. [ ['a','b','c'] , ['d','e'], ['f'] ]
         self.nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
 
-    def feedForward(self, activation):
 
+    def feedForward(self, activation):
         ###input- ACTIVATION, a dictionary with each input node and its activation weight
         for key, activ in activation.items():
             self.nodes[key].totalInput = activ #set the activation for the input nodes given parameter
@@ -69,21 +68,23 @@ class NN:
 
         #for each layer but the last, send activation down
         for layerIndex in range(0,len(self.layers)-1):  #for each non-output layer
-            for nodeName in self.layers[layerIndex]:        #for each node in that layer
-                node = self.nodes[nodeName]
+            for node in self.layers[layerIndex]:        #for each node in that layer
                 for up, weight in node.upConnections.items(): #for each upConnection
                     upNode = self.nodes[up]     #the node we're connecting to
                     outty = sigmoid(self.sigmoidA, weight) #send this as output
                     upNode.totalInput += outty
-                    print("sent up activation from node ", nodeName, " to node ", up)
+                    print("sent up activation from node ", node.name, " to node ", up)
 
         #now run the output through sigmoid function
         outDictionary = {} #output dictionary that gives outputnode:outputStrength
-        for outputNode in self.layers[len(self.layers)-1]:
-            node = self.nodes[outputNode]
+        for node in self.layers[len(self.layers)-1]:
             node.output = sigmoid(self.sigmoidA, node.totalInput)
-            outDictionary.update({outputNode:node.output})
+            outDictionary.update({node.name:node.output})
 
+        #now, reset all values for nodes
+        for node in self.nodes.values():
+            node.reset()
+        
         return outDictionary
         
 
@@ -110,19 +111,19 @@ class NN:
             self.nodes.update({name:node})
 
     def fillLayers(self): #given all nodes{}, fills in layers[] list
-        if self.layersSize==[]:
+        if self.layersSize == []:
             print("ERROR! Trying to call fillLayers given empty layersSize array!")
         else:
             currentNode = 0
-            for layer in range(0, len(self.layersSize)):   #for each layer
-                self.layers.append([])
-                for i in range(0, self.layersSize[layer]):   #for each node in the layer
-                    self.layers[layer].append(self.nodeNames[currentNode])
-                    currentNode+=1
+            for layer in range(0, len(self.layersSize)):
+                self.layers.append([]) #create empy list for each layer
+            for node in self.nodes.values():
+                l = node.layer
+                self.layers[l].append(node)
+            
 
     def randNN(self, layers):
         self.layersSize = layers
-        self.fillLayers()
         #input: layers is an array defining the size of each layer
         # e.g. [4,5,3] means 4 input layers, 5 middle, 3 output
         cumLayers = cumulativeLayers(layers) 
@@ -151,14 +152,14 @@ class NN:
                     self.nodes[nodeName].upConnections.update({targetNode:connectionWeight})
                     self.nodes[targetNode].downConnections.update( {self.nodeNames[nodeIndex]: connectionWeight} )
                 nodeIndex+=1
+        #after nodes are created, fill layers
+        self.fillLayers()
 
     def printNN(self):
         for nodey in self.nodes.values():
             nodey.printNode()
             print("\t\n")
-                
-    #def feedForward(self):
-        
+                        
 def writeToFile(filename, toWrite):
     f = open(filename, 'w')
     f.write(toWrite)
