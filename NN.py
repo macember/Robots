@@ -143,6 +143,7 @@ class NN:
             deltaThreshold = outNode.error * self.alpha
             outNode.threshold += deltaThreshold
             print("At outnode ", outNode.name, ", change in threshold is: ", deltaThreshold)
+            print("\tThreshold is: ", outNode.threshold) 
             for downC, weight in outNode.downConnections.items(): #for downCnnection, weight
                 deltaWeight = deltaThreshold * self.nodes[downC].output
                 newWeight = weight = deltaWeight
