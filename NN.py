@@ -33,10 +33,15 @@ class Node:
         self.totalInput = 0
         self.error = 0
 
+    def printNodeCnxn(self):
+        print("Theta:            ", self.threshold)
+        print("Up connections:   ", self.upConnections)
+        print("Down connections: ", self.downConnections)
+
     def printNode(self):
         print("Printing Node:", self.name)
         print("\tlayer is:", self.layer)
-        print("\tthreshold is:", self.layer)
+        print("\tthreshold is:", self.threshold)
         print("\tUp connections are given by:", self.upConnections)
         print("\tDown connections are given by:", self.downConnections)        
         print("\tand our output is:", self.output)
@@ -71,6 +76,11 @@ class NN:
         self.layersSize = [] #size of each layer, e.g. [4,3,2] has 4 input, 3 middle, 2 output
         self.layers = []    #List-of-lists. Each node object in each layer. e.g. [ ['a','b','c'] , ['d','e'], ['f'] ]
         self.nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+
+    def printNNCnxn(self):
+        for nodey in self.nodes.values():
+            print(nodey.name)
+            nodey.printNodeCnxn()
 
     def updateWeight(self, A, B, newWeight): #input: two nodes and a new weight
         nameA = A.name
