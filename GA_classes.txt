@@ -1,0 +1,23 @@
+# POPULATION
+# 	Properties
+#		INDIS				array of individuals
+#		Size				size of pop
+#		Breeding method(s)	array of touples; Name of methos, percent of pop [string, int] 
+#		numCases			Number of fitness cases
+#		hitCriteria			Criteria for a hit (how fit it has to be)
+#	 Methods
+#		makeNewPop			make a new population
+#		fitness				evaluate fitness of population
+#		makeNextPop			create the next generation
+
+
+# INDI
+# Individuals for this population are Neural Networks and have all of their properties in addition
+# to these
+#	Properties
+#		Fitnesses			An array of ints, corresponding to the various computed fitness measures
+#			Raw
+#			Adjusted
+#			Normalized
+#		Hits				the number of fitness cases this individual has performed well in		
+	
