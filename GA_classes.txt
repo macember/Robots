@@ -20,4 +20,12 @@
 #			Adjusted
 #			Normalized
 #		Hits				the number of fitness cases this individual has performed well in		
-	
+
+
+# MAIN
+# You will need some sort of main function to run the GA.  
+# And that main method will need some inputs:
+#	Pop size (pass through to pop)
+#	pretty much all of the other POPULATION fields too
+#	number of generations, the number of generations to run the system
+#	termination criteria, typically, a goal fitness s.t. if an indi reaches it the simulation stops
