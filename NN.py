@@ -55,16 +55,13 @@ def runScript():
 
 def testFeedForward():
     N = NN()
-    N.randNN([3,3,3])
-    activation = {'a':.5, 'b':.2, 'c':.75}
-    firstFeedForward = N.feedForward(activation)
-    for x in range(0,200):
+    N.randNN([1,1,1,1])
+    print("Alpha value: ",N.alpha)
+    activation = {'a':.5}
+    for x in range(0,1):
         N.feedForward(activation)
-        if x==199:
-            lastFeedForward = N.feedForward(activation)
-    print("DONE TRAINING 200 TIMES, FIRST FEED FORWARD WAS: ", firstFeedForward)
-    print("LAST ITERATION WAS: ", lastFeedForward)
     return N
+
 
 class NN:
     def __init__(self, dna=""):
@@ -108,7 +105,7 @@ class NN:
             else:
                 ret.update({outputNode.name:0})
         return ret
-
+    
     def feedForward(self, activation):
         ###input- ACTIVATION, a dictionary with each input node and its activation weight
         for key, activ in activation.items():
@@ -119,19 +116,25 @@ class NN:
         for layerIndex in range(0,len(self.layers)-1):  #for each non-output layer
             for node in self.layers[layerIndex]:        #for each node in that layer
                 node.output = sigmoid(self.sigmoidA, node.totalInput + node.threshold)  #set the output for the node based on totalInput
+                print("Node ", node.name, "output: ", node.output)
+                print("Node connections: ",node.upConnections.items())
+                
                 for up, weight in node.upConnections.items(): #for each upConnection
                     upNode = self.nodes[up]     #the node we're connecting to
                     upNode.totalInput += node.output * weight
-                    print("sent up activation from node ", node.name, " to node ", up)
+                    print("Sent up activation from node ", node.name, " to node ", up)
+                    print(upNode.name,"total input: ",upNode.totalInput)
+                    print("------------------------")
 
         #now run the output through sigmoid function
         outDictionary = {} #output dictionary that gives outputnode:outputStrength
         for node in self.layers[len(self.layers)-1]:
             node.output = sigmoid(self.sigmoidA, node.totalInput)
             outDictionary.update({node.name:node.output})
+        print(outDictionary.items())
 
         desiredOutput = self.getDesiredOutput()
-        print('calling back propogation with output: ', desiredOutput)
+        print('\ncalling back propogation with output: ', desiredOutput)
         self.backPropogation(outDictionary, desiredOutput)
         return outDictionary
 
@@ -148,15 +151,18 @@ class NN:
         #FORMULA FOR OUTPUT NODES:
         #change in threshold = alpha * error
         #change in connection weights = change in threshold * x(i), where x(i) = input to this output node
-
+        print("\n~~~~~ OUTPUT LAYER BACKPROP ~~~~~~ ")
         for outNode in self.layers[len(self.layers)-1]:
             deltaThreshold = outNode.error * self.alpha
             outNode.threshold += deltaThreshold
-            print("At outnode ", outNode.name, ", change in threshold is: ", deltaThreshold)
+
+            print("NODE: ", outNode.name)
+            print("Change in threshold is: ", deltaThreshold)
             print("\tThreshold is: ", outNode.threshold) 
             for downC, weight in outNode.downConnections.items(): #for downCnnection, weight
                 deltaWeight = deltaThreshold * self.nodes[downC].output
-                newWeight = weight = deltaWeight
+                newWeight += deltaWeight
+                weight += deltaWeight
                 self.updateWeight(outNode, self.nodes[downC], newWeight)
                 print("At connection between ", outNode.name, " and ", \
                       self.nodes[downC].name, ", change in weight is ", deltaWeight)
@@ -166,10 +172,11 @@ class NN:
         # z = output of node, m(i) = connection to node i toward output, pi = error values for connected node
 
         #for each middle layer
-        for i in range(len(self.layers)-2, 0): #for each middle layer
-            print("Entering layer: ", self.layers[i][0].layer)
+        print("\n~~~~~ MIDDLE LAYER BACKPROP ~~~~~")
+        for i in range(len(self.layers)-2,0,-1): #for each middle layer
+            print("\nEntering layer: ", self.layers[i][0].layer)
             for middleNode in self.layers[i]: #for each middle node
-                print("Now calculator error for node ", middleNode.name, " on layer ", middleNode.layer)
+                print("NODE: ", middleNode.name)
                 ###calculate error value for middle node
                 output = middleNode.output
                 #calculate sum of connection to output node and error value for output node
@@ -177,16 +184,17 @@ class NN:
                 for nodeName, weight in middleNode.upConnections.items():
                     upNode = self.nodes[nodeName]
                     MiPiSum += weight * upNode.error
-                print("Done calculating MiPiSum for node ", middleNode.name, ", it is: ", MiPiSum)
+                #print("Done calculating MiPiSum for node ", middleNode.name, ", it is: ", MiPiSum)
                 middleNode.error = output * (1- output) * MiPiSum
-                print("Done calculating error for node ", middleNode.name, ", it is: ", middleNode.error)
+                print("Error: ", middleNode.error)
                 ####Calculate deltaThreshold for middle node then deltaWeight for each downNode
                 deltaThreshold = middleNode.error * self.alpha
                 for downC, weight in middleNode.downConnections.items():
                     deltaWeight = deltaThreshold * self.nodes[downC].output
-                    newWeight = weight = deltaWeight
-                    self.updateWeight(outNode, self.nodes[downC], newWeight)
-                    print("At connection between ", outNode.name, " and ", \
+                    newWeight += deltaWeight
+                    weight += deltaWeight
+                    self.updateWeight(middleNode, self.nodes[downC], newWeight)
+                    print("At connection between ", middleNode.name, " and ", \
                           self.nodes[downC].name, ", change in weight is ", deltaWeight)
                 
         #now, reset all values for nodes
