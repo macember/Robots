@@ -161,8 +161,7 @@ class NN:
             print("\tThreshold is: ", outNode.threshold) 
             for downC, weight in outNode.downConnections.items(): #for downCnnection, weight
                 deltaWeight = deltaThreshold * self.nodes[downC].output
-                newWeight += deltaWeight
-                weight += deltaWeight
+                newWeight = weight = deltaWeight
                 self.updateWeight(outNode, self.nodes[downC], newWeight)
                 print("At connection between ", outNode.name, " and ", \
                       self.nodes[downC].name, ", change in weight is ", deltaWeight)
