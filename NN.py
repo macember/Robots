@@ -1,8 +1,16 @@
 import random, math
 
+#####TURN ON OR OFF BACK PROP
+backPropOn = False
 
 def sigmoid(alpha, x):
-    return 1 / (1 + math.e**(-1*alpha * x))
+    if x>10:
+        return 1
+    elif x<-10:
+        return 0
+    else:
+        return 1 / (1 + (math.e**(-1*alpha * x)))
+    
 
 
 def createTestNN():
@@ -58,12 +66,13 @@ def testFeedForward():
     N.randNN([1,1,1,1])
     print("Alpha value: ",N.alpha)
     activation = {'a':.5}
-    for x in range(0,1):
+    for x in range(0,100):
         N.feedForward(activation)
     return N
 
 
 class NN:
+    nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']    
     def __init__(self, dna=""):
         self.nodes = {}       #key=node name, value = node object
         self.alpha = .2
@@ -72,7 +81,6 @@ class NN:
         random.seed()        #seed random number generator
         self.layersSize = [] #size of each layer, e.g. [4,3,2] has 4 input, 3 middle, 2 output
         self.layers = []    #List-of-lists. Each node object in each layer. e.g. [ ['a','b','c'] , ['d','e'], ['f'] ]
-        self.nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
 
     def printNNCnxn(self):
         for nodey in self.nodes.values():
@@ -107,35 +115,37 @@ class NN:
         return ret
     
     def feedForward(self, activation):
+
         ###input- ACTIVATION, a dictionary with each input node and its activation weight
         for key, activ in activation.items():
             self.nodes[key].output = activ #set the activation for the input nodes given parameter
-
 
         #for each layer but the last, send activation down
         for layerIndex in range(0,len(self.layers)-1):  #for each non-output layer
             for node in self.layers[layerIndex]:        #for each node in that layer
                 node.output = sigmoid(self.sigmoidA, node.totalInput + node.threshold)  #set the output for the node based on totalInput
-                print("Node ", node.name, "output: ", node.output)
-                print("Node connections: ",node.upConnections.items())
+                #print("Node ", node.name, "output: ", node.output)
+                #print("Node connections: ",node.upConnections.items())
                 
                 for up, weight in node.upConnections.items(): #for each upConnection
                     upNode = self.nodes[up]     #the node we're connecting to
                     upNode.totalInput += node.output * weight
-                    print("Sent up activation from node ", node.name, " to node ", up)
-                    print(upNode.name,"total input: ",upNode.totalInput)
-                    print("------------------------")
+                    #print("Sent up activation from node ", node.name, " to node ", up)
+                    #print(upNode.name,"total input: ",upNode.totalInput)
+                    #print("------------------------")
 
         #now run the output through sigmoid function
         outDictionary = {} #output dictionary that gives outputnode:outputStrength
         for node in self.layers[len(self.layers)-1]:
             node.output = sigmoid(self.sigmoidA, node.totalInput)
             outDictionary.update({node.name:node.output})
-        print(outDictionary.items())
+            
+        #print(outDictionary.items())
 
-        desiredOutput = self.getDesiredOutput()
-        print('\ncalling back propogation with output: ', desiredOutput)
-        self.backPropogation(outDictionary, desiredOutput)
+       # desiredOutput = self.getDesiredOutput()
+       # print('\ncalling back propogation with output: ', desiredOutput)
+        ###NOTE- BACKPROP NOT CALLED BECAUSE THE GAME CALLS IT INDEPENDENTLY
+       # print("Called feedForward on dictionary: ", activation, " output is: ", outDictionary)
         return outDictionary
 
     
@@ -192,8 +202,8 @@ class NN:
                     deltaWeight = deltaThreshold * self.nodes[downC].output
                     newWeight = weight + deltaWeight
                     self.updateWeight(middleNode, self.nodes[downC], newWeight)
-                    print("At connection between ", middleNode.name, " and ", \
-                          self.nodes[downC].name, ", change in weight is ", deltaWeight)
+                   # print("At connection between ", middleNode.name, " and ", \
+                    #      self.nodes[downC].name, ", change in weight is ", deltaWeight)
                 
         #now, reset all values for nodes
         for node in self.nodes.values():

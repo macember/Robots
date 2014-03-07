@@ -1,9 +1,8 @@
 import pygame, sys, random
+from NN import *
 from pygame.locals import *
 
-visualMode = True
-quadrantShiftTime = 100
-foodClusterGenerationTime = 100
+visualMode = False
 
 
 ###Game Variables
@@ -17,6 +16,7 @@ mousex, mousey = 0, 0
 
 ###Map class definition
 class gameMap:
+    cannotDie = True
     #constructor
     def __init__(self, logging=True):
         random.seed() #on creation of map, seed random number generator
@@ -31,9 +31,19 @@ class gameMap:
                 else:
                     color = 1
                 matrix[x][y] = color
-        self.logging = logging
         self.Matrix = matrix
+
+        ###Switch variables                
+        self.deathQuadrantOn = False #whether the game has a death quadrant
+        self.logging = logging
+
+        ###General variables
+        self.quadrantShiftTime = 30
         self.locationsToUpdate = [] #list of locations to update visually
+        for i in range(0,40):
+            for j in range(0,40):
+                self.locationsToUpdate.append([i,j])
+        
         self.playerPos = [10,10] #position of agent
         self.quadrant = 2 #a number between 0 and 4, starting at bottom left, moving clockwise
         self.foodCount = 0 #count of the food eaten
@@ -47,69 +57,101 @@ class gameMap:
         self.quadrantBounds.append( [[10,20],[20,30]] ) ###quadrant 1 bounds
         self.quadrantBounds.append( [[10,20],[10,20]] )
         self.quadrantBounds.append( [[20,30],[10,20]] )
+        
+        ###Neural net variables
+        self.NNClockTicks = self.quadrantShiftTime * 5
+        self.moveBuffer = [0,0,0,0] #up, left, down, right
+        self.timeSinceFood = self.NNClockTicks
+        NNInputNode = 1
 
-    def shiftQuadrant(self, desiredQuadrant=-1):
+    def timeUntilShift(self):
+        return self.quadrantShiftTime - (self.clock % self.quadrantShiftTime)
+
+    def shiftQuadrant(self, desiredQuadrant=-1): #DQ means if there IS a deathquadrant
         #increment quadrant count
         oldQuadrant = self.quadrant
-        if(desiredQuadrant==-1):                
+        if(desiredQuadrant==-1):
             self.quadrant = (self.quadrant+1)%4
             newQuadrant = self.quadrant
         else:
             self.quadrant = newQuadrant = desiredQuadrant
-
-        print('on shiftQuadrant, old quadrant is ', oldQuadrant, " New quadrant is ", newQuadrant)
         #map goes from x=10 to x=29 and y = 10 to y=29
         #quadrantBounds array is QuadrantBounds[quadrantNumber][x or y bound][lower/upper]
-        self.fillQuadrant(newQuadrant, 0)
+        if self.deathQuadrantOn:
+            #if we have a death quadrant    
+            self.fillQuadrant(newQuadrant, 0)
         self.fillQuadrant(oldQuadrant, 1)
+
         if self.logging:
             self.log+=str(self.clock) + ":Q" + str(newQuadrant) + ";"
         if self.Matrix[self.playerPos[0]][self.playerPos[1]] == 0: #quadrant just shifted onto player
             self.death()
+
+    def moveBufferDecay(self, decayAmount=.25):  #decays move buffer by a fixed amount
+        for f in self.moveBuffer:
+            f = max(0, f-decayAmount)
         
     def moveAgent(self, keyname):
+        ### local variables ###
         move = ""
+        oldPos = list(self.playerPos)
+        newPos = list(self.playerPos)
+        ### append old playerPos to locationToUpdate ###
         self.locationsToUpdate.append([self.playerPos[0], self.playerPos[1]])
+
+        #### SET THE MOVE, adjust move buffer###
+        self.moveBufferDecay()
         if keyname == "up" or keyname == 'w':
-            self.playerPos[1]-=1
+            newPos[1]-=1
             move = "w"
-        elif keyname == "down" or keyname == 's':
-            self.playerPos[1]+=1
-            move = "s"
+            self.moveBuffer[0] = 1
         elif keyname == "left" or keyname == 'a':
-            self.playerPos[0]-=1
+            newPos[0]-=1
             move="a"
+            self.moveBuffer[1] = 1            
+        elif keyname == "down" or keyname == 's':
+            newPos[1]+=1
+            move = "s"
+            self.moveBuffer[2] = 1
         elif keyname == "right" or keyname == 'd':
-            self.playerPos[0]+=1
+            newPos[0]+=1
             move="d"
-            
-        playerLocation = self.Matrix[self.playerPos[0]][self.playerPos[1]]
+            self.moveBuffer[3] = 1
+        
+        playerLocation = self.Matrix[newPos[0]][newPos[1]]
+        ### Check if we cannot die; otherwise, update position ###
+        if self.cannotDie and playerLocation==0: #we cannot die but we are moving into death
+            pass #do nothing, DON'T update the playerPos
+        else:
+            self.playerPos = list(newPos)  
+	### Do actions based on whether player died or ate food ###	
         if playerLocation == 0: #if agent is in blue square after moving
             self.death()
         elif playerLocation == 3: #just ate food
+            self.eatFood()
             self.foodCount+=1
-            print("Food count is: ", self.foodCount)
+            #print("Food count is: ", self.foodCount)
             self.Matrix[self.playerPos[0]][self.playerPos[1]] = 1 #just ate food, reset square to grey
             self.locationsToUpdate.append([self.playerPos[0], self.playerPos[1]])
-        #write move to log
+        ### write move to log ###
         if self.logging:
             self.log+=str(self.clock)+":"+move+";"
             
 
-    def fillQuadrant(self,index, val):
+    def fillQuadrant(self,index, val):  #fills a quadrant number INDEX with the value VAL
         for x in range(self.quadrantBounds[index][0][0], self.quadrantBounds[index][0][1]):
             for y in range(self.quadrantBounds[index][1][0], self.quadrantBounds[index][1][1]):
                 self.locationsToUpdate.append([x,y])
-                self.Matrix[x][y] = val #MAKE OLD QUADRANT GREY        
+                self.Matrix[x][y] = val #MAKE OLD QUADRANT GREY
 
     def generateFood(self, x=-1, y=-1): #generates center for where food will be
         #first, replace old quadrant's food with grey
         oldQuadrant = (self.quadrant-2) % 4
         self.fillQuadrant(oldQuadrant,1)
         #random food will be generated in the following configuration in a quadrant:
-        #     xxx 
-        #     x*x
-        #     xxx   Where * is a empty and x has food
+        # xxx
+        # x*x
+        # xxx Where * is a empty and x has food
         #to do so, we must randomly generate a * location within a quandrant.
         if x==-1 and y==-1:
             desiredQuadrant = (self.quadrant-1) % 4
@@ -127,18 +169,21 @@ class gameMap:
             self.generateFoodHelper(x,y)
 
     def generateFoodHelper(self,x,y):
-        print('GENERATING FOOD AT ', x, y)
         #Given center, generates pattern
         #inputs: x,y, coordinates of randomly chosen center point
         #this function generates food in a pattern around the center point
-        for xnew in range(x-1, x+2): 
+        for xnew in range(x-1, x+2):
             for ynew in range(y-1,y+2):
                 if xnew!=x or ynew!=y: #choose every location BUT (x,y)
                     self.Matrix[xnew][ynew] = 3
                     self.locationsToUpdate.append([xnew,ynew])
 
     def death(self):
-        print("Player just died!")
+        pass
+        #print("Player just died!")
+
+    def eatFood(self):
+        self.timeSinceFood = 0
 
     def cleanup(self): #method to call when game ends. Does cleanup
         self.log += "***"
@@ -180,53 +225,191 @@ def populateBoard(board, window):
 
 
 #### MAIN GAME LOOP #####
-def simulateGame():        
-    ##pygame initialization
+def simulateGame(net=None, logFile = ""):
+   ### Determine Mode ###
+    fromNN = net!=None
+    fromLog = logFile!=""
+    fromUser = not(fromNN) and not(fromLog)
+
+    ### pygame, board, clock initialization ###
     pygame.init()
     board = gameMap()
     fpsClock = pygame.time.Clock()
 
+    ###  Populate Board ###
     if visualMode:
         windowSurfaceObj = pygame.display.set_mode((800,800))
         pygame.display.set_caption('Monkey Robots')
         windowSurfaceObj.fill(greyColor) #fills the window with grey
         populateBoard(board, windowSurfaceObj) # fills the initial map
 
-    finished = False
-    while not finished:
-        if visualMode:
-            pygame.draw.circle(windowSurfaceObj, redColor, (board.playerPos[0]*20 + 10, board.playerPos[1]*20 + 10), 10)
-            for l in board.locationsToUpdate:
-                x = l[0]
-                y = l[1]
-                pygame.draw.polygon(windowSurfaceObj, mapColor(board.Matrix[x][y]), ( (x*20, y*20), ((x*20)+20, y*20),((x*20)+20, (y*20)+20), (x*20, (y*20)+20)) )
-            board.locationsToUpdate = []
-         ##Process Game Events
-        for event in pygame.event.get():
-            if event.type==QUIT:
-                #pygame.quit()
-                #sys.exit()
-                finished = True
-            elif event.type == MOUSEMOTION:
-                mousex, mousey = event.pos
-            elif event.type == KEYDOWN:
-                print('moving', pygame.key.name(event.key))
-                keyname = pygame.key.name(event.key)
-                board.moveAgent(keyname)
 
-        if board.clock%quadrantShiftTime == 0:
-            board.shiftQuadrant()
-            board.generateFood()
+###### USER CONTROL MODE-------------------------------------------------------------------------
+    if fromUser:
+        finished = False
+        while not finished:
+            ##Process Game Events
+            for event in pygame.event.get():
+                if event.type==QUIT:
+                    #pygame.quit()
+                    #sys.exit()
+                    finished = True
+                elif event.type == MOUSEMOTION:
+                    mousex, mousey = event.pos
+                elif event.type == KEYDOWN:
+                    print('moving', pygame.key.name(event.key))
+                    keyname = pygame.key.name(event.key)
+                    board.moveAgent(keyname)
 
-        pygame.display.update()
-        board.clock+=1
-        fpsClock.tick(10)
+            if visualMode:
+                for l in board.locationsToUpdate:
+                    x = l[0]
+                    y = l[1]
+                    pygame.draw.polygon(windowSurfaceObj, mapColor(board.Matrix[x][y]), ( (x*20, y*20), ((x*20)+20, y*20),((x*20)+20, (y*20)+20), (x*20, (y*20)+20)) )
+                pygame.draw.circle(windowSurfaceObj, redColor, (board.playerPos[0]*20 + 10, board.playerPos[1]*20 + 10), 10)
+                board.locationsToUpdate = []
+
+    
+            if board.clock % board.quadrantShiftTime == 0:
+                board.shiftQuadrant()
+                board.generateFood()
+            print("agent location is: ", board.playerPos)
+    
+            pygame.display.update()
+            board.clock+=1
+            fpsClock.tick(1)
+#######END USER MODE-------------------------------------------------------------------------
+
+
+####### NEURAL NET MODE ##### ---------------------------------------------------------------
+    elif fromNN:
+        finished = False
+        endGameClock = board.NNClockTicks
+        ###Main game loop
+        NNInput = {}
+        while board.clock < endGameClock and not(finished):
+            #first, get all the inputs
+            if 1==1: #a switch for later use                
+                NNInput = {}
+                timeSinceFoodInput = max(1 - (.1 * board.timeSinceFood), 0) 
+                #normalize timeUntilShift as clockInput
+                clockInput = ( board.quadrantShiftTime - board.timeUntilShift() ) / board.quadrantShiftTime
+                NNInput.update({'a': board.moveBuffer[0]})
+                NNInput.update({'b': board.moveBuffer[1]})
+                NNInput.update({'c': board.moveBuffer[2]})
+                NNInput.update({'d': board.moveBuffer[3]})
+                NNInput.update({'e': timeSinceFoodInput})
+                NNInput.update({'f': clockInput})
+            #now we have the input; feed it into the NN
+            outty = net.feedForward(NNInput)
+            #print("\tinput/output: ", NNInput, "     ", outty)
+            move = decideMoveFromNNOutput(outty, net)
+            #print("MOVE IS: ", move)
+            if move!=None:
+                board.moveAgent(move)
+            else:
+                print("Simulating from NN Error: Couldn't find a move from NN output!")
+            
+          #####OTHER GAME STUFF ######              
+            if board.clock%board.quadrantShiftTime == 0:
+                board.shiftQuadrant()
+                board.generateFood()
+
+            if visualMode:
+                for l in board.locationsToUpdate:
+                    x = l[0]
+                    y = l[1]
+                    pygame.draw.polygon(windowSurfaceObj, mapColor(board.Matrix[x][y]), ( (x*20, y*20), ((x*20)+20, y*20),((x*20)+20, (y*20)+20), (x*20, (y*20)+20)) )
+                pygame.draw.circle(windowSurfaceObj, redColor, (board.playerPos[0]*20 + 10, board.playerPos[1]*20 + 10), 10)
+                board.locationsToUpdate = []
+
+
+            ###event manager
+            for event in pygame.event.get():
+                if event.type==QUIT:
+                    #pygame.quit()
+                    #sys.exit()
+                    finished = True
+
+            board.clock+=1    
+            if visualMode:
+                pygame.display.update()
+                fpsClock.tick(1)            
+
+
+#####END NEURAL NET MODE -------------------------------------------------------------------        
+
+
+###### LOG MODE -------------------------------------------------------------------------------
+    ###Main game Loop
+    elif fromLog:
+        f = open(logFile, 'r')
+        gameString = f.read()
+        f.close()
+        gameEvents = logToDictionary(gameString) #a dictionary of clock time/game events
+        totalClockTicks = gameEvents["ClockTicks"]
+        if(totalClockTicks<=0):
+            return
+        
+        while board.clock<=totalClockTicks:
+            if visualMode:
+                pygame.draw.circle(windowSurfaceObj, redColor, (board.playerPos[0]*20 + 10, board.playerPos[1]*20 + 10), 10)
+                for l in board.locationsToUpdate:
+                    x = l[0]
+                    y = l[1]
+                    pygame.draw.polygon(windowSurfaceObj, mapColor(board.Matrix[x][y]), ( (x*20, y*20), ((x*20)+20, y*20),((x*20)+20, (y*20)+20), (x*20, (y*20)+20)) )
+                board.locationsToUpdate = []
+    
+            ###event manager
+            for event in pygame.event.get():
+                if event.type==QUIT:
+                    #pygame.quit()
+                    #sys.exit()
+                    finished = True
+                elif event.type == MOUSEMOTION:
+                    mousex, mousey = event.pos
+                elif event.type == KEYDOWN:
+                    print('keyboard press!')
+                
+            ##Process Game Events
+            if board.clock in gameEvents: #if there is an event at this clock time
+                e = gameEvents[board.clock] #get value in hashtable
+                print('e is: ',e)
+                events = e.split(';')
+                for event in events:
+                    print('on event ', event)
+                    firstChar = event[0]
+                    if firstChar=='w' or firstChar=='a' or firstChar=='s' or firstChar=='d':
+                        board.moveAgent(firstChar)
+                    elif firstChar=='F':
+                        #new food is being generated, get its location
+                        foodxy = event[1:].split(',')
+                        board.generateFood(int(foodxy[0]),int(foodxy[1]))
+                    elif firstChar=='Q':
+                        board.shiftQuadrant(int(event[1]))
+                    else:
+                        print('ERROR PARSING REPLAY FILE! SHOULDNT REACH HERE!')
+
+            pygame.display.update()
+            board.clock+=1
+            fpsClock.tick(10)
+
+
+   ####END LOG MODE --------------------------------------------------------------------------- 
+    else:
+        print("Warning! fromUser, fromNN, and fromLog all false!!!!")
 
         
+    #### Clean up ###
     print("Out of game")
     board.cleanup()
-    writeLogToFile("output.txt", board.log)
+    if not fromLog:
+        writeLogToFile("output.txt", board.log)
     pygame.quit()
+
+
+
+
 
 def logToDictionary(gameString):
     #first, split string by ***
@@ -238,15 +421,15 @@ def logToDictionary(gameString):
                                        #events = wasd / Q[0-3] / F[position
     d = {} #create dictionary
     for e in eachEvent:
-        print(e)
+        #print(e)
         #first, get the clock time
         logEntry = e.split(':')
         #print(logEntry)
         if len(logEntry)>1: #edge case- in case there is empty event
             time = int(logEntry[0])
-            print('time: ', time)
+            #print('time: ', time)
             event = logEntry[1]
-            print('event: ', event)
+            #print('event: ', event)
             if time in d: #we already have an entry for the time; add to it
                 entry = d[time]
                 entry+=";" + event
@@ -259,6 +442,33 @@ def logToDictionary(gameString):
     print('dictionary is: ', d)
     return d
                           
+
+def decideMoveFromNNOutput(d, net): #d = output from net
+    ####Know which move each NN node name correlates to. i.e. 'k' is up ###
+    totalN = 0
+    for x in range(0, len(net.layersSize)-1):
+        totalN += net.layersSize[x]
+    moveDict = {}
+    moveDict.update({net.nodeNames[totalN]:'up'})
+    moveDict.update({net.nodeNames[totalN+1]:'left'})
+    moveDict.update({net.nodeNames[totalN+2]:'down'})
+    moveDict.update({net.nodeNames[totalN+3]:'right'})
+
+    ###now, iterate through the output from the net to decide a move
+    maxStrength = -1
+    maxNode = ''
+    for node, strength in d.items():
+        if strength > maxStrength:
+            maxStrength = strength
+            maxNode = node
+    #now we have the strongest node activation from the given output
+    if maxNode in moveDict:
+        return moveDict[maxNode]
+    else:
+        print ("decideMoveFromNNOutput ERROR! Node Misalignment, coudln't determine output!!!")
+        return None
+                            
+
 
 def simulateFromLog(logFile):
     f = open(logFile, 'r')
@@ -318,14 +528,14 @@ def simulateFromLog(logFile):
                 elif firstChar=='Q':
                     board.shiftQuadrant(int(event[1]))
                 else:
-                    print('ERROR PARSING REPLAY FILE! SHOULDNT REACH HERE!')                
+                    print('ERROR PARSING REPLAY FILE! SHOULDNT REACH HERE!')
 
 
         #for debugging
         #if(board.clock%2==0):
-        #    board.moveAgent('up')
+        # board.moveAgent('up')
         #else:
-        #    board.moveAgent('down')
+        # board.moveAgent('down')
 
         pygame.display.update()
         board.clock+=1
@@ -335,7 +545,9 @@ def simulateFromLog(logFile):
     print("Out of game")
     board.cleanup()
     #writeLogToFile("output.txt", board.log)
-    pygame.quit()    
+    pygame.quit()
+    
+    
     
 #Christina (but not actually christina) was here
 # Jacob was here and Lorenz smells like old butthole. Boop.
