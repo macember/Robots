@@ -2,7 +2,7 @@ import pygame, sys, random
 from NN import *
 from pygame.locals import *
 
-visualMode = False
+visualMode = True
 
 
 ###Game Variables
@@ -232,12 +232,12 @@ def simulateGame(net=None, logFile = ""):
     fromUser = not(fromNN) and not(fromLog)
 
     ### pygame, board, clock initialization ###
-    pygame.init()
     board = gameMap()
-    fpsClock = pygame.time.Clock()
 
     ###  Populate Board ###
     if visualMode:
+        fpsClock = pygame.time.Clock()
+        pygame.init()
         windowSurfaceObj = pygame.display.set_mode((800,800))
         pygame.display.set_caption('Monkey Robots')
         windowSurfaceObj.fill(greyColor) #fills the window with grey
@@ -246,6 +246,10 @@ def simulateGame(net=None, logFile = ""):
 
 ###### USER CONTROL MODE-------------------------------------------------------------------------
     if fromUser:
+        if not visualMode:
+            print("ERROR: Trying to simulate game out of visual mode!")
+            return False
+        
         finished = False
         while not finished:
             ##Process Game Events
@@ -325,14 +329,15 @@ def simulateGame(net=None, logFile = ""):
 
 
             ###event manager
-            for event in pygame.event.get():
-                if event.type==QUIT:
-                    #pygame.quit()
-                    #sys.exit()
-                    finished = True
+
 
             board.clock+=1    
             if visualMode:
+                for event in pygame.event.get():
+                    if event.type==QUIT:
+                        #pygame.quit()
+                        #sys.exit()
+                        finished = True                
                 pygame.display.update()
                 fpsClock.tick(1)            
 
@@ -468,84 +473,6 @@ def decideMoveFromNNOutput(d, net): #d = output from net
         print ("decideMoveFromNNOutput ERROR! Node Misalignment, coudln't determine output!!!")
         return None
                             
-
-
-def simulateFromLog(logFile):
-    f = open(logFile, 'r')
-    gameString = f.read()
-    f.close()
-    gameEvents = logToDictionary(gameString) #a dictionary of clock time/game events
-    totalClockTicks = gameEvents["ClockTicks"]
-    if(totalClockTicks<=0):
-        return
-    
-    ##pygame initialization
-    pygame.init()
-    board = gameMap()
-    fpsClock = pygame.time.Clock()
-
-    if visualMode:
-        windowSurfaceObj = pygame.display.set_mode((800,800))
-        pygame.display.set_caption('Monkey Robots')
-        windowSurfaceObj.fill(greyColor) #fills the window with grey
-        populateBoard(board, windowSurfaceObj) # fills the initial map
-
-    ###Main game Loop
-    while board.clock<=totalClockTicks:
-        if visualMode:
-            pygame.draw.circle(windowSurfaceObj, redColor, (board.playerPos[0]*20 + 10, board.playerPos[1]*20 + 10), 10)
-            for l in board.locationsToUpdate:
-                x = l[0]
-                y = l[1]
-                pygame.draw.polygon(windowSurfaceObj, mapColor(board.Matrix[x][y]), ( (x*20, y*20), ((x*20)+20, y*20),((x*20)+20, (y*20)+20), (x*20, (y*20)+20)) )
-            board.locationsToUpdate = []
-
-        ###event manager
-        for event in pygame.event.get():
-            if event.type==QUIT:
-                #pygame.quit()
-                #sys.exit()
-                finished = True
-            elif event.type == MOUSEMOTION:
-                mousex, mousey = event.pos
-            elif event.type == KEYDOWN:
-                print('keyboard press!')
-            
-        ##Process Game Events
-        if board.clock in gameEvents: #if there is an event at this clock time
-            e = gameEvents[board.clock] #get value in hashtable
-            print('e is: ',e)
-            events = e.split(';')
-            for event in events:
-                print('on event ', event)
-                firstChar = event[0]
-                if firstChar=='w' or firstChar=='a' or firstChar=='s' or firstChar=='d':
-                    board.moveAgent(firstChar)
-                elif firstChar=='F':
-                    #new food is being generated, get its location
-                    foodxy = event[1:].split(',')
-                    board.generateFood(int(foodxy[0]),int(foodxy[1]))
-                elif firstChar=='Q':
-                    board.shiftQuadrant(int(event[1]))
-                else:
-                    print('ERROR PARSING REPLAY FILE! SHOULDNT REACH HERE!')
-
-
-        #for debugging
-        #if(board.clock%2==0):
-        # board.moveAgent('up')
-        #else:
-        # board.moveAgent('down')
-
-        pygame.display.update()
-        board.clock+=1
-        fpsClock.tick(10)
-
-        
-    print("Out of game")
-    board.cleanup()
-    #writeLogToFile("output.txt", board.log)
-    pygame.quit()
     
     
     

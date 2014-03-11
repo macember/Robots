@@ -1,13 +1,20 @@
 import random, math
 
+
+activationTest = {'a':.1,'b':-.75, 'c':.4, 'd':-.5, 'e':0, 'f':.9}
+
 #####TURN ON OR OFF BACK PROP
 backPropOn = False
 
-def sigmoid(alpha, x):
+def sigmoid(alpha, x, N):
     if x>10:
+        print("Abnormally large sigmoid value!")
+        N.sigmoidError = True
         return 1
     elif x<-10:
-        return 0
+        print("Abnormally small sigmoid value!")
+        N.sigmoidError = True
+        return 0    
     else:
         return 1 / (1 + (math.e**(-1*alpha * x)))
     
@@ -73,7 +80,7 @@ def testFeedForward():
 
 class NN:
     nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']    
-    def __init__(self, dna=""):
+    def __init__(self, l=None, dna=""):
         self.nodes = {}       #key=node name, value = node object
         self.alpha = .2
         self.sigmoidA = 1 
@@ -81,11 +88,20 @@ class NN:
         random.seed()        #seed random number generator
         self.layersSize = [] #size of each layer, e.g. [4,3,2] has 4 input, 3 middle, 2 output
         self.layers = []    #List-of-lists. Each node object in each layer. e.g. [ ['a','b','c'] , ['d','e'], ['f'] ]
+        self.sigmoidError = False #for debugging
+        if l!=None:
+            self.randNN(l)
 
     def printNNCnxn(self):
         for nodey in self.nodes.values():
             print(nodey.name)
             nodey.printNodeCnxn()
+
+    def printNNCompact(self):
+        for layer in range(0, len(self.layers)-1):
+            print('\n')
+            for nodey in self.layers[layer]:
+                print(nodey.upConnections)
 
     def updateWeight(self, A, B, newWeight): #input: two nodes and a new weight
         nameA = A.name
@@ -115,7 +131,8 @@ class NN:
         return ret
     
     def feedForward(self, activation):
-
+        debugMode = False
+        backProp = False
         ###input- ACTIVATION, a dictionary with each input node and its activation weight
         for key, activ in activation.items():
             self.nodes[key].output = activ #set the activation for the input nodes given parameter
@@ -123,7 +140,14 @@ class NN:
         #for each layer but the last, send activation down
         for layerIndex in range(0,len(self.layers)-1):  #for each non-output layer
             for node in self.layers[layerIndex]:        #for each node in that layer
-                node.output = sigmoid(self.sigmoidA, node.totalInput + node.threshold)  #set the output for the node based on totalInput
+                node.output = sigmoid(self.sigmoidA, node.totalInput + node.threshold, self)  #set the output for the node based on totalInput
+
+                if self.sigmoidError:
+                    print("Error: Sigmoid input too large or too small! It was: ", node.totalInput + node.threshold)
+                    node.printNode()
+                    self.sigmoidError = False
+                    debugMode = True
+
                 #print("Node ", node.name, "output: ", node.output)
                 #print("Node connections: ",node.upConnections.items())
                 
@@ -137,15 +161,20 @@ class NN:
         #now run the output through sigmoid function
         outDictionary = {} #output dictionary that gives outputnode:outputStrength
         for node in self.layers[len(self.layers)-1]:
-            node.output = sigmoid(self.sigmoidA, node.totalInput)
+            node.output = sigmoid(self.sigmoidA, node.totalInput, self)
             outDictionary.update({node.name:node.output})
             
         #print(outDictionary.items())
 
-       # desiredOutput = self.getDesiredOutput()
+      # desiredOutput = self.getDesiredOutput()
        # print('\ncalling back propogation with output: ', desiredOutput)
         ###NOTE- BACKPROP NOT CALLED BECAUSE THE GAME CALLS IT INDEPENDENTLY
-       # print("Called feedForward on dictionary: ", activation, " output is: ", outDictionary)
+        if debugMode:
+            print("Called feedForward on dictionary: ", activation, " output is: ", outDictionary)
+        if not backProp:
+            for node in self.nodes.values():
+                node.reset()
+                
         return outDictionary
 
     
