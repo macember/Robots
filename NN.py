@@ -129,21 +129,35 @@ class NN:
             else:
                 ret.update({outputNode.name:0})
         return ret
+
+    def randActivation(self):
+        activ = {}
+        for nodey in self.layers[0]: #for each input node, add it to activ and give random weight
+            activ.update({nodey.name:random.uniform(-1.0,1.0)})
+        return activ
+
+    def testFF(self):
+        for i in range(0,10):           
+            activ1 = self.randActivation()
+            print("activ is ", activ1)
+            print(self.feedForward(activ1))
+
     
     def feedForward(self, activation):
         debugMode = False
         backProp = False
         ###input- ACTIVATION, a dictionary with each input node and its activation weight
         for key, activ in activation.items():
-            self.nodes[key].output = activ #set the activation for the input nodes given parameter
+            self.nodes[key].totalInput = activ #set the activation for the input nodes given parameter
 
         #for each layer but the last, send activation down
-        for layerIndex in range(0,len(self.layers)-1):  #for each non-output layer
+        for layerIndex in range(0,len(self.layers)-1):  #for each middle layer
             for node in self.layers[layerIndex]:        #for each node in that layer
                 node.output = sigmoid(self.sigmoidA, node.totalInput + node.threshold, self)  #set the output for the node based on totalInput
-
+               # print("TotalInput of node ", node.name, " is ", node.totalInput + node.threshold)
+               # print("Output of node ", node.name, " is: ", node.output)
                 if self.sigmoidError:
-                    print("Error: Sigmoid input too large or too small! It was: ", node.totalInput + node.threshold)
+                #    print("Error: Sigmoid input too large or too small! It was: ", node.totalInput + node.threshold)
                     node.printNode()
                     self.sigmoidError = False
                     debugMode = True
@@ -161,7 +175,8 @@ class NN:
         #now run the output through sigmoid function
         outDictionary = {} #output dictionary that gives outputnode:outputStrength
         for node in self.layers[len(self.layers)-1]:
-            node.output = sigmoid(self.sigmoidA, node.totalInput, self)
+            node.output = sigmoid(self.sigmoidA, node.totalInput + node.threshold, self)
+            #print("Output node ", node.name, " totalInput is: ", node.totalInput+node.threshold, "  output is ", node.output)            
             outDictionary.update({node.name:node.output})
             
         #print(outDictionary.items())

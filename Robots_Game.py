@@ -287,6 +287,8 @@ def simulateGame(net=None, logFile = ""):
 
 ####### NEURAL NET MODE ##### ---------------------------------------------------------------
     elif fromNN:
+        randNNInput = True
+        
         finished = False
         endGameClock = board.NNClockTicks
         ###Main game loop
@@ -305,8 +307,16 @@ def simulateGame(net=None, logFile = ""):
                 NNInput.update({'e': timeSinceFoodInput})
                 NNInput.update({'f': clockInput})
             #now we have the input; feed it into the NN
-            outty = net.feedForward(NNInput)
-            #print("\tinput/output: ", NNInput, "     ", outty)
+
+            
+            if randNNInput == False:
+                activ = NNInput
+            else:
+               activ = net.randActivation()
+            outty = net.feedForward(activ)
+
+                
+            print("\tinput/output/activation: ", NNInput, "     ", outty, "      ", activ)
             move = decideMoveFromNNOutput(outty, net)
             #print("MOVE IS: ", move)
             if move!=None:
