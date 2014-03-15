@@ -2,6 +2,7 @@ import random, math
 
 
 activationTest = {'a':.1,'b':-.75, 'c':.4, 'd':-.5, 'e':0, 'f':.9}
+moveDict = {'up':0, 'left':1, 'down':2, 'right': 3} #keep track of order of moves for output
 
 #####TURN ON OR OFF BACK PROP
 backPropOn = False
@@ -139,8 +140,8 @@ class NN:
     def testFF(self):
         for i in range(0,10):           
             activ1 = self.randActivation()
-            print("activ is ", activ1)
-            print(self.feedForward(activ1))
+            print("input is: ", activ1)
+            print("Output is: ", self.feedForward(activ1))
 
     
     def feedForward(self, activation):

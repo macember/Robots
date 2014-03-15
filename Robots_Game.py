@@ -45,6 +45,7 @@ class gameMap:
                 self.locationsToUpdate.append([i,j])
         
         self.playerPos = [10,10] #position of agent
+        self.foodPos = [-1, -1] #position of center of food cluster
         self.quadrant = 2 #a number between 0 and 4, starting at bottom left, moving clockwise
         self.foodCount = 0 #count of the food eaten
         self.score = 0 #overall game score
@@ -169,6 +170,8 @@ class gameMap:
             self.generateFoodHelper(x,y)
 
     def generateFoodHelper(self,x,y):
+        ###set center of food to x,y
+        self.foodPos = [x,y]
         #Given center, generates pattern
         #inputs: x,y, coordinates of randomly chosen center point
         #this function generates food in a pattern around the center point
@@ -190,6 +193,55 @@ class gameMap:
         self.log+="TotalScore:" + str(self.score) + ";"
         self.log+="ClockTicks:" + str(self.clock) + ";"
         self.log+="FoodCount:" + str(self.foodCount)
+
+    ###Training functions for back prop
+    def smellOfFoodOutputSimple(self):
+        if self.foodPos == [-1,-1]:
+            print("smellOfFoodOutputSimple Error! FoodPos at (-1,-1)!")
+            return [0,0,0,0]
+        #smellOfFoodOutputSimple: Returns '1' for directions toward center of food, '0' for direcitons away from it
+        playerP = self.playerPos
+        foodP = self.foodPos
+        offset = [self.foodPos[i]-self.playerPos[i] for i in range(0,2)]
+        retMatrix = [0,0,0,0] #matrix of desired output; initialize to 0 in each direction
+        if offset[0]>0: #if food is to the right, we want to move right
+            retMatrix[moveDict['right']] = 1
+        else:
+            retMatrix[moveDict['left']] = 1
+        if offset[1]>0: #if food is farther down, we want to move down
+            retMatrix[moveDict['down']] = 1
+        else:
+            retMatrix[moveDict['up']] = 1
+        return retMatrix
+
+    def smellOfFoodOutputComplex(self):
+        if self.foodPos == [-1,-1]:
+            print("smellOfFoodOutputComplex Error! FoodPos at (-1,-1)!")
+            return [0,0,0,0]
+        #smellOfFoodOutputSimple: Returns normalized desired output
+            #where the direction we have to move the most in to get food is outputted as '1'
+            #and the second-most direction is outputed as (seondMost/most)
+            #For instance, if the food center was 5 squares up and 2 to the right, the return would be:
+                #up: 1, right: 2/5, down: 0, left: 0
+        offset = [self.foodPos[i]-self.playerPos[i] for i in range(0,2)]
+        retMatrix = [0,0,0,0] #matrix of desired output; initialize to 0 in each direction
+        dir1 = 'right' if offset[0]>0 else 'left'
+        dir2 = 'down' if offset[1]>1 else 'up'
+        if offset[0] > offset[1]:
+            primaryDir = dir1
+            secondaryDir = dir2
+            secondary = offset[1]/offset[0] #secondary is the output for the non-primary direction
+        else:
+            primaryDir = dir2
+            secondaryDir = dir1
+            secondary = offset[0]/offset[1] 
+        retMatrix[moveDict[primaryDir]] = 1 #the offset for the primary direction toward food is 1
+        retMatrix[moveDict[secondaryDir]] = secondary #the offset for the secondary direction toward food is a ratio of 
+                                                        #secondaryMagnitude/primaryMagnitude
+        return retMatrix                 
+
+       
+        
         
 def writeLogToFile(filename, toWrite):
     f = open(filename, 'w')
