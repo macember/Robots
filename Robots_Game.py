@@ -46,7 +46,7 @@ class gameMap:
         
         self.playerPos = [10,10] #position of agent
         self.foodPos = [-1, -1] #position of center of food cluster
-        self.quadrant = 2 #a number between 0 and 4, starting at bottom left, moving clockwise
+        self.quadrant = 0 #a number between 0 and 4, starting at bottom left, moving clockwise
         self.foodCount = 0 #count of the food eaten
         self.score = 0 #overall game score
         self.log = "" #keep a log of moves
@@ -60,7 +60,7 @@ class gameMap:
         self.quadrantBounds.append( [[20,30],[10,20]] )
         
         ###Neural net variables
-        self.NNClockTicks = self.quadrantShiftTime * 10000
+        self.NNClockTicks = self.quadrantShiftTime * 1000
         self.moveBuffer = [0,0,0,0] #up, left, down, right
         self.timeSinceFood = self.NNClockTicks
         NNInputNode = 1
@@ -89,10 +89,12 @@ class gameMap:
             self.death()
 
     def moveBufferDecay(self, decayAmount=.25):  #decays move buffer by a fixed amount
-        for f in self.moveBuffer:
-            f = max(0, f-decayAmount)
+        for i in range(0, len(self.moveBuffer)):
+            self.moveBuffer[i] = max(0, self.moveBuffer[i]-decayAmount)
+
         
     def moveAgent(self, keyname):
+        #print("Agent moved: ", keyname)
         ### local variables ###
         move = ""
         oldPos = list(self.playerPos)
@@ -228,8 +230,8 @@ class gameMap:
         offset = [self.foodPos[i]-self.playerPos[i] for i in range(0,2)]
         retMatrix = [0,0,0,0] #matrix of desired output; initialize to 0 in each direction
         dir1 = 'right' if offset[0]>0 else 'left'
-        dir2 = 'down' if offset[1]>1 else 'up'
-        if offset[0] > offset[1]:
+        dir2 = 'down' if offset[1]>0 else 'up'
+        if abs(offset[0]) > abs(offset[1]):
             primaryDir = dir1
             secondaryDir = dir2
             if offset[0]==0:
@@ -314,6 +316,7 @@ def simulateGame(net=None, logFile = ""):
         
         finished = False
         while not finished:
+            print(board.quadrant)
             ##Process Game Events
             for event in pygame.event.get():
                 if event.type==QUIT:
@@ -350,7 +353,7 @@ def simulateGame(net=None, logFile = ""):
 ####### NEURAL NET MODE ##### ---------------------------------------------------------------
     elif fromNN:
         randNNInput = False   #flag for if NN is given random input or input from the game. For testing purposes. 
-        backPropOn = True   #flag for if we should do backprop
+        backPropOn = net.backPropOn   #flag for if we should do backprop
         #backPropFunction = smellOfFoodOutputComplex  #which function we use for desired output in backpropogation
         
         finished = False
@@ -361,15 +364,26 @@ def simulateGame(net=None, logFile = ""):
             #first, get all the inputs
             if 1==1: #a switch for later use                
                 NNInput = {}
-                timeSinceFoodInput = max(1 - (.1 * board.timeSinceFood), 0) 
+                timeSinceFoodInput = max(1 - (.1 * board.timeSinceFood), 0)
                 #normalize timeUntilShift as clockInput
                 clockInput = ( board.quadrantShiftTime - board.timeUntilShift() ) / board.quadrantShiftTime
+    
+                #input for quadrant, binary system where 00-11 represent active quadrant
+                quad = board.quadrant
+                quadInput0 = board.quadrant//2
+                if quad==3 or quad==0:
+                    quadInput1 = 1
+                else:
+                    quadInput1 = 0
+                
                 NNInput.update({'a': board.moveBuffer[0]})
                 NNInput.update({'b': board.moveBuffer[1]})
                 NNInput.update({'c': board.moveBuffer[2]})
                 NNInput.update({'d': board.moveBuffer[3]})
                 NNInput.update({'e': timeSinceFoodInput})
                 NNInput.update({'f': clockInput})
+                NNInput.update({'g':quadInput0})
+                NNInput.update({'h':quadInput1})
             #now we have the input; feed it into the NN
 
             actualOutput = None
