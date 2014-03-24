@@ -143,10 +143,25 @@ class NN:
             print("input is: ", activ1)
             print("Output is: ", self.feedForward(activ1))
 
-    
+
+    def moveListToOutputDict(self, listy):
+        if len(listy)!=4:
+            print("ERROR! moveListToOutputDict requires a list of length 4!!")
+
+        totalN = 0
+        for x in range(0, len(self.layersSize)-1):
+            totalN += self.layersSize[x]
+        
+        moveDict = {}
+        moveDict.update({self.nodeNames[totalN]:listy[0]})
+        moveDict.update({self.nodeNames[totalN+1]:listy[1]})
+        moveDict.update({self.nodeNames[totalN+2]:listy[2]})
+        moveDict.update({self.nodeNames[totalN+3]:listy[3]})
+        return moveDict
+
     def feedForward(self, activation):
         debugMode = False
-        backProp = False
+        backProp = True
         ###input- ACTIVATION, a dictionary with each input node and its activation weight
         for key, activ in activation.items():
             self.nodes[key].totalInput = activ #set the activation for the input nodes given parameter
@@ -193,9 +208,10 @@ class NN:
                 
         return outDictionary
 
-    
+
 
     def backPropogation(self, actualOutput, expectedOutput):
+        debugMode = False
         #step1- take in desiredOutput for output layer, put in function to find error value
 
         #error = z(1-z)(y-z), z=output, y=desiredOutput
@@ -206,19 +222,22 @@ class NN:
         #FORMULA FOR OUTPUT NODES:
         #change in threshold = alpha * error
         #change in connection weights = change in threshold * x(i), where x(i) = input to this output node
-        print("\n~~~~~ OUTPUT LAYER BACKPROP ~~~~~~ ")
+        if debugMode:
+            print("\n~~~~~ OUTPUT LAYER BACKPROP ~~~~~~ ")
         for outNode in self.layers[len(self.layers)-1]:
             deltaThreshold = outNode.error * self.alpha
             outNode.threshold += deltaThreshold
 
-            print("NODE: ", outNode.name)
-            print("Change in threshold is: ", deltaThreshold)
-            print("\tThreshold is: ", outNode.threshold) 
+            if debugMode:
+                print("NODE: ", outNode.name)
+                print("Change in threshold is: ", deltaThreshold)
+                print("\tThreshold is: ", outNode.threshold) 
             for downC, weight in outNode.downConnections.items(): #for downCnnection, weight
                 deltaWeight = deltaThreshold * self.nodes[downC].output
                 newWeight = weight + deltaWeight
                 self.updateWeight(outNode, self.nodes[downC], newWeight)
-                print("At connection between ", outNode.name, " and ", \
+                if debugMode:
+                    print("At connection between ", outNode.name, " and ", \
                       self.nodes[downC].name, ", change in weight is ", deltaWeight)
         
         #FORMULA FOR MIDDLE NODES
@@ -226,11 +245,14 @@ class NN:
         # z = output of node, m(i) = connection to node i toward output, pi = error values for connected node
 
         #for each middle layer
-        print("\n~~~~~ MIDDLE LAYER BACKPROP ~~~~~")
+        if debugMode:
+            print("\n~~~~~ MIDDLE LAYER BACKPROP ~~~~~")
         for i in range(len(self.layers)-2,0,-1): #for each middle layer
-            print("\nEntering layer: ", self.layers[i][0].layer)
+            if debugMode:
+                print("\nEntering layer: ", self.layers[i][0].layer)
             for middleNode in self.layers[i]: #for each middle node
-                print("NODE: ", middleNode.name)
+                if debugMode:
+                    print("NODE: ", middleNode.name)
                 ###calculate error value for middle node
                 output = middleNode.output
                 #calculate sum of connection to output node and error value for output node
@@ -240,21 +262,29 @@ class NN:
                     MiPiSum += weight * upNode.error
                 #print("Done calculating MiPiSum for node ", middleNode.name, ", it is: ", MiPiSum)
                 middleNode.error = output * (1- output) * MiPiSum
-                print("Error: ", middleNode.error)
+                if debugMode:
+                    print("Error: ", middleNode.error)
                 ####Calculate deltaThreshold for middle node then deltaWeight for each downNode
                 deltaThreshold = middleNode.error * self.alpha
                 for downC, weight in middleNode.downConnections.items():
                     deltaWeight = deltaThreshold * self.nodes[downC].output
                     newWeight = weight + deltaWeight
                     self.updateWeight(middleNode, self.nodes[downC], newWeight)
-                   # print("At connection between ", middleNode.name, " and ", \
-                    #      self.nodes[downC].name, ", change in weight is ", deltaWeight)
-                
+       
         #now, reset all values for nodes
         for node in self.nodes.values():
             node.reset()
 
+##        self.alpha = .2
+##        self.sigmoidA = 1 
+##        self.DNA = dna       #encoded __dict__ of class
+##        random.seed()        #seed random number generator
+##        self.layersSize = [] #size of each layer, e.g. [4,3,2] has 4 input, 3 middle, 2 output
+##        self.layers = []    #List-of-lists. Each node object in each layer. e.g. [ ['a','b','c'] , ['d','e'], ['f'] ]
+##        self.sigmoidError = False #for debugging
+
     def pickle(self): #returns a dictionary of the NN. Stores info about NN
+        
         ret = {}
         nodesDict = {}
         for node in self.nodes.values(): #iterate through each node
@@ -262,19 +292,30 @@ class NN:
             val = node.__dict__
             nodesDict.update({key:val})
         ret.update({"nodes":nodesDict})
+        ret.update({"alpha":self.alpha})
+        ret.update({"layersSize":self.layersSize})
+        
         return str(ret)
 
-    def depickle(self, datafile):
-        DNAstring = readFromFile(datafile)
+    def depickle(self, DNAstring, datafile=None):
+        if DNAstring=="":
+            DNAstring = readFromFile(datafile)
         NNdict = eval(DNAstring)
         self.nodes = {}
         for n in NNdict['nodes'].values():
-            name = n['name']
-            layer = n['layer']
-            delta = n['delta']
-            connections = n['connections']
-            node = Node(name,layer,delta,connections)
-            self.nodes.update({name:node})
+            x = Node(n['name'])
+            x.layer = n['layer']
+            x.threshold = n['threshold']
+            x.totalInput = n['totalInput']
+            x.output = n['output']
+            x.error = n['error']
+            x.upConnections = n['upConnections']
+            x.downConnections = n['downConnections']
+            self.nodes.update({x.name:x})
+            
+        self.alpha = NNdict['alpha']
+        self.layersSize = NNdict['layersSize']
+        self.fillLayers()
 
     def fillLayers(self): #given all nodes{}, fills in layers[] list
         if self.layersSize == []:

@@ -2,7 +2,7 @@ import pygame, sys, random
 from NN import *
 from pygame.locals import *
 
-visualMode = True
+visualMode = False
 
 
 ###Game Variables
@@ -60,7 +60,7 @@ class gameMap:
         self.quadrantBounds.append( [[20,30],[10,20]] )
         
         ###Neural net variables
-        self.NNClockTicks = self.quadrantShiftTime * 5
+        self.NNClockTicks = self.quadrantShiftTime * 10000
         self.moveBuffer = [0,0,0,0] #up, left, down, right
         self.timeSinceFood = self.NNClockTicks
         NNInputNode = 1
@@ -223,6 +223,8 @@ class gameMap:
             #and the second-most direction is outputed as (seondMost/most)
             #For instance, if the food center was 5 squares up and 2 to the right, the return would be:
                 #up: 1, right: 2/5, down: 0, left: 0
+
+            
         offset = [self.foodPos[i]-self.playerPos[i] for i in range(0,2)]
         retMatrix = [0,0,0,0] #matrix of desired output; initialize to 0 in each direction
         dir1 = 'right' if offset[0]>0 else 'left'
@@ -230,11 +232,17 @@ class gameMap:
         if offset[0] > offset[1]:
             primaryDir = dir1
             secondaryDir = dir2
-            secondary = offset[1]/offset[0] #secondary is the output for the non-primary direction
+            if offset[0]==0:
+                secondary = 0
+            else:
+                secondary = offset[1]/offset[0] #secondary is the output for the non-primary direction
         else:
             primaryDir = dir2
             secondaryDir = dir1
-            secondary = offset[0]/offset[1] 
+            if offset[1]==0:
+                secondary = 0
+            else:
+                secondary = offset[0]/offset[1] 
         retMatrix[moveDict[primaryDir]] = 1 #the offset for the primary direction toward food is 1
         retMatrix[moveDict[secondaryDir]] = secondary #the offset for the secondary direction toward food is a ratio of 
                                                         #secondaryMagnitude/primaryMagnitude
@@ -242,6 +250,8 @@ class gameMap:
 
        
         
+
+
         
 def writeLogToFile(filename, toWrite):
     f = open(filename, 'w')
@@ -339,7 +349,9 @@ def simulateGame(net=None, logFile = ""):
 
 ####### NEURAL NET MODE ##### ---------------------------------------------------------------
     elif fromNN:
-        randNNInput = True
+        randNNInput = False   #flag for if NN is given random input or input from the game. For testing purposes. 
+        backPropOn = True   #flag for if we should do backprop
+        #backPropFunction = smellOfFoodOutputComplex  #which function we use for desired output in backpropogation
         
         finished = False
         endGameClock = board.NNClockTicks
@@ -360,15 +372,20 @@ def simulateGame(net=None, logFile = ""):
                 NNInput.update({'f': clockInput})
             #now we have the input; feed it into the NN
 
-            
+            actualOutput = None
             if randNNInput == False:
                 activ = NNInput
             else:
-               activ = net.randActivation()
-            outty = net.feedForward(activ)
+                activ = net.randActivation()
 
+            outty = net.feedForward(activ)
+            actualOutput = outty
+            if backPropOn:
+                outputMatrix = board.smellOfFoodOutputComplex()
+                desiredOutput = net.moveListToOutputDict(outputMatrix)
+                net.backPropogation(actualOutput, desiredOutput)
                 
-            print("\tinput/output/activation: ", NNInput, "     ", outty, "      ", activ)
+           # print("\tinput/output/activation: ", NNInput, "     ", outty, "      ", activ)
             move = decideMoveFromNNOutput(outty, net)
             #print("MOVE IS: ", move)
             if move!=None:
@@ -469,11 +486,14 @@ def simulateGame(net=None, logFile = ""):
         
     #### Clean up ###
     print("Out of game")
+    print("\tScore is: ", board.foodCount)
     board.cleanup()
     if not fromLog:
         writeLogToFile("output.txt", board.log)
-    pygame.quit()
-
+    if visualMode:
+        pygame.quit()
+    if net!=None:
+        return net.pickle()
 
 
 
