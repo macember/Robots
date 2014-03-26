@@ -34,6 +34,9 @@ class gameMap:
                 matrix[x][y] = color
         self.Matrix = matrix
 
+        #Matrix color scheme:
+        # 0=land, 1=water, 3=food
+
         ###Switch variables                
         self.deathQuadrantOn = False #whether the game has a death quadrant
         self.logging = logging
@@ -251,8 +254,50 @@ class gameMap:
                                                         #secondaryMagnitude/primaryMagnitude
         return retMatrix                 
 
-       
+    def inMatrixBounds(self,pos):
+        #input: POS, an array of 2 elements representing a position
+        #output: boolean representing whether pos is in bounds of self.Matrix
+        return pos[0]<len(self.Matrix) and pos[1]<len(self.Matrix) and pos[0]>-1 and pos[1]>-1
+
+    def sight(self):
+        #returns an array of four values, up left down right, representing whether food is seen in that direction
+        ret = [0,0,0,0] #array to return
+        ###up
+        p = self.playerPos
+        sightColor = self.Matrix[p[0]][p[1]]
+        while(self.inMatrixBounds(p) and sightColor==0):
+            p[1]-=1  #go up 
+            sightColor = self.Matrix[p[0]][p[1]]
+        if sightColor==3: #if we see food
+            ret[0]=1
+        ###left
+        p = self.playerPos
+        sightColor = self.Matrix[p[0]][p[1]]
+        while(self.inMatrixBounds(p) and sightColor==0):
+            p[0]-=1  #go left 
+            sightColor = self.Matrix[p[0]][p[1]]
+        if sightColor==3: #if we see food
+            ret[1]=1
+        ###down
+        p = self.playerPos
+        sightColor = self.Matrix[p[0]][p[1]]
+        while(self.inMatrixBounds(p) and sightColor==0):
+            p[1]+=1  #go down 
+            sightColor = self.Matrix[p[0]][p[1]]
+        if sightColor==3: #if we see food
+            ret[2]=1
+        ###right
+        p = self.playerPos
+        sightColor = self.Matrix[p[0]][p[1]]
+        while(self.inMatrixBounds(p) and sightColor==0):
+            p[0]+=1  #go right 
+            sightColor = self.Matrix[p[0]][p[1]]
+        if sightColor==3: #if we see food
+            ret[3]=1
+
+        return ret
         
+                    
 
 
         
@@ -295,7 +340,7 @@ def getSenses():
     senses.update({"moveBuffer": True})
     senses.update({"clockInput": True})
     senses.update({"quadInput": True})
-    senses.update({"lineSight": False})
+    senses.update({"lineSight": True})
     senses.update({"smell": False})
     return senses
 
@@ -352,6 +397,16 @@ def getNNInput(board, senses):
                 quadInput1 = 0
             inputList.append(quadInput0)
             inputList.append(quadInput1)
+
+### lineSight ###
+### four element matrix representing directions, 0 if we see water, 1 if we see food
+    if "lineSight" in senses:
+        if senses["lineSight"]==True:
+            sight = board.sight()
+            for s in sight:
+                inputList.append(s)
+
+
 
 #####TODO: ADD MORE SENSES #####---------------------------------
     
