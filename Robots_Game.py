@@ -3,6 +3,7 @@ from NN import *
 from pygame.locals import *
 
 visualMode = False
+nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']    
 
 
 ###Game Variables
@@ -288,8 +289,81 @@ def populateBoard(board, window):
                 pygame.draw.polygon(window, mapColor(board.Matrix[x][y]), ( (x*20, y*20), ((x*20)+20, y*20),((x*20)+20, (y*20)+20), (x*20, (y*20)+20)) )
 
 
+def getSenses():
+    senses = {}
+    senses.update({"timeSinceFood": True})
+    senses.update({"moveBuffer": True})
+    senses.update({"clockInput": True})
+    senses.update({"quadInput": True})
+    senses.update({"lineSight": False})
+    senses.update({"smell": False})
+    return senses
+
+def getSensesNodeCount():
+    sensesSizeDict = { "timeSinceFood":1, "moveBuffer":4, 'clockInput':1, \
+                      'quadInput':2, 'lineSight':4, 'smell':0}
+    senses = getSenses()
+    count = 0
+    for key, b in senses.items():
+        if b==True: #if the sense is turned on
+            count+=sensesSizeDict[key]
+    return count
+            
+
+def getNNInput(board, senses):
+    inputList = []
+    #BOARD is a gameMap object
+    #SENSES is a dictionary that says which sensory information to give the NN
+
+####  Time since food  ####
+#### Resets to 1 when you eat food, and degrades by a constant (.1) each clock tick without food
+    if "timeSinceFood" in senses:
+        if senses["timeSinceFood"]==True:
+            timeSinceFoodInput = max(1 - (.1 * board.timeSinceFood), 0)
+            inputList.append(timeSinceFoodInput)
+
+####  moveBuffer  ####
+###Four numbers representing each direction. Degrades by ~.2 each clock tick, 
+#resets to 1 when you move in that direction
+    if "moveBuffer" in senses:
+        if senses["moveBuffer"]==True:
+            inputList.append(board.moveBuffer[0])
+            inputList.append(board.moveBuffer[1])
+            inputList.append(board.moveBuffer[2])
+            inputList.append(board.moveBuffer[3])
+
+#### clockInput  ####
+### A number from 0 to 1, representing how soon until the food shifts
+    if "clockInpu" in senses:
+        if senses["clockInput"]==True:
+            #normalize timeUntilShift as clockInput
+            clockInput = ( board.quadrantShiftTime - board.timeUntilShift() ) / board.quadrantShiftTime
+            inputList.append(clockInput)
+                                    
+#### quadInput  ####
+###Represents the current quadrant that food is in. Two inputs for binary representation
+    if "quadInput" in senses:
+        if senses["quadInput"]==True:
+            quad = board.quadrant
+            quadInput0 = board.quadrant//2
+            if quad==3 or quad==0:
+                quadInput1 = 1
+            else:
+                quadInput1 = 0
+            inputList.append(quadInput0)
+            inputList.append(quadInput1)
+
+#####TODO: ADD MORE SENSES #####---------------------------------
+    
+    NNInput = {}
+    for i, val in enumerate(inputList):
+        NNInput.update({nodeNames[i]:val})
+    return NNInput
+
+
 #### MAIN GAME LOOP #####
 def simulateGame(net=None, logFile = ""):
+    clockShiftCount = 0
    ### Determine Mode ###
     fromNN = net!=None
     fromLog = logFile!=""
@@ -362,29 +436,12 @@ def simulateGame(net=None, logFile = ""):
         NNInput = {}
         while board.clock < endGameClock and not(finished):
             #first, get all the inputs
-            if 1==1: #a switch for later use                
-                NNInput = {}
-                timeSinceFoodInput = max(1 - (.1 * board.timeSinceFood), 0)
-                #normalize timeUntilShift as clockInput
-                clockInput = ( board.quadrantShiftTime - board.timeUntilShift() ) / board.quadrantShiftTime
-    
-                #input for quadrant, binary system where 00-11 represent active quadrant
-                quad = board.quadrant
-                quadInput0 = board.quadrant//2
-                if quad==3 or quad==0:
-                    quadInput1 = 1
-                else:
-                    quadInput1 = 0
-                
-                NNInput.update({'a': board.moveBuffer[0]})
-                NNInput.update({'b': board.moveBuffer[1]})
-                NNInput.update({'c': board.moveBuffer[2]})
-                NNInput.update({'d': board.moveBuffer[3]})
-                NNInput.update({'e': timeSinceFoodInput})
-                NNInput.update({'f': clockInput})
-                NNInput.update({'g':quadInput0})
-                NNInput.update({'h':quadInput1})
-            #now we have the input; feed it into the NN
+
+
+            senses = getSenses()
+
+            NNInput = getNNInput(board,senses)          
+
 
             actualOutput = None
             if randNNInput == False:
@@ -409,6 +466,9 @@ def simulateGame(net=None, logFile = ""):
             
           #####OTHER GAME STUFF ######              
             if board.clock%board.quadrantShiftTime == 0:
+                clockShiftCount+=1
+                if clockShiftCount%100==0:
+                    print(clockShiftCount)
                 board.shiftQuadrant()
                 board.generateFood()
 
@@ -508,8 +568,6 @@ def simulateGame(net=None, logFile = ""):
         pygame.quit()
     if net!=None:
         return net.pickle()
-
-
 
 
 def logToDictionary(gameString):
