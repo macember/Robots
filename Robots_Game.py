@@ -200,6 +200,31 @@ class gameMap:
         self.log+="ClockTicks:" + str(self.clock) + ";"
         self.log+="FoodCount:" + str(self.foodCount)
 
+    def desiredOutput(self):
+        #check if we can move toward food to get it. If so, its legitimate output
+        moveToFood = self.moveToFoodOutput()
+        if moveToFood!=[0,0,0,0]:
+            return moveToFood
+        else:
+            return self.smellOfFoodOutputComplex()
+        
+
+
+    def moveToFoodOutput(self):
+        ###checks if the agent can move one direction to get food
+        ###if the agent can, then desired output should be toward that food
+        ###otherwise, return [0,0,0,0]
+        retMatrix = [0,0,0,0]
+        if self.Matrix[self.playerPos[0]] [self.playerPos[1]-1] == 3: #food is up
+            retMatrix[0] = 1
+        if self.Matrix[self.playerPos[0]-1] [self.playerPos[1]] == 3: #food is left
+            retMatrix[1] = 1
+        if self.Matrix[self.playerPos[0]] [self.playerPos[1]+1] == 3: #food is down
+            retMatrix[2] = 1
+        if self.Matrix[self.playerPos[0]+1] [self.playerPos[1]] == 3: #food is right
+            retMatrix[3] = 1
+        return retMatrix
+
     ###Training functions for back prop
     def smellOfFoodOutputSimple(self):
         if self.foodPos == [-1,-1]:
@@ -295,6 +320,7 @@ class gameMap:
         if sightColor==3: #if we see food
             ret[3]=1
 
+        #print("Sight is: ", ret)
         return ret
         
                     
@@ -446,6 +472,7 @@ def simulateGame(net=None, logFile = ""):
         
         finished = False
         while not finished:
+            board.desiredOutput()
             senses = getSenses()
             NNInput = getNNInput(board,senses)            ##Process Game Events
             for event in pygame.event.get():
@@ -508,7 +535,8 @@ def simulateGame(net=None, logFile = ""):
             outty = net.feedForward(activ)
             actualOutput = outty
             if backPropOn:
-                outputMatrix = board.smellOfFoodOutputComplex()
+                outputMatrix = board.desiredOutput()
+                #outputMatrix = board.smellOfFoodOutputComplex()
                 desiredOutput = net.moveListToOutputDict(outputMatrix)
                 net.backPropogation(actualOutput, desiredOutput)
                 

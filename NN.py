@@ -4,8 +4,6 @@ import random, math
 activationTest = {'a':.1,'b':-.75, 'c':.4, 'd':-.5, 'e':0, 'f':.9}
 moveDict = {'up':0, 'left':1, 'down':2, 'right': 3} #keep track of order of moves for output
 
-#####TURN ON OR OFF BACK PROP
-backPropOn = False
 
 def sigmoid(alpha, x, nodey):
     if x>10:
@@ -218,8 +216,7 @@ class NN:
 
 
     def backPropogation(self, actualOutput, expectedOutput):
- 
-        
+
         debugMode = False
         #step1- take in desiredOutput for output layer, put in function to find error value
 
