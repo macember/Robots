@@ -14,6 +14,8 @@ import random
 # fitnessScore
 # -----------------
 # a value that's updated to contain the fitness score
+#
+
 
 
 # =================
@@ -124,7 +126,7 @@ class Population:
 
 def selFuncA(sortedOldGen):
     breedingPairs = []
-    for agentPos in range(0, len(sortedOldGen)/3):
+    for agentPos in range(0, len(sortedOldGen)//3):
         agent0 = sortedOldGen[agentPos]
         agent1 = sortedOldGen[agentPos + 1]
         agent2 = sortedOldGen[agentPos + 2]
@@ -142,31 +144,24 @@ def selFuncA(sortedOldGen):
 # the current NN-size
 # OUTPUT: a new dictionary containing the children agents
 
-def breedingFuncA(breedingPairs, agentDictionary, nnSize):
+def breedingFuncA(breedingPairs, agentDictionary, layers):
+    # for each pair...
     for pairIndex in range(0,len(breedingPairs)):
         newAgent = NN()
-        newAgent.layersSize = nnSize
-        cumLayers = cumulativeLayers(nnSize)
-        totalNodes = sum(layers)
+        newAgent.randNN(layers);
         parents = breedingPairs[pairIndex]
         
-        # Instantiate all nodes
-        for layerIndex in range(0,len(nnSize)):
+        # Update threshold value for each node
+        for layerIndex in range(0,len(layers)):
             for nodeIndex in range(0,layers[layerIndex]):
-                n = Node(self.nodeNames[nodeIndex])
-                n.layer = layerIndex
+                n = newAgent.nodes[self.nodeNames[nodeIndex]]
                 # METHOD FOR CHOOSING THRESHOLD?
                 # n.threshold = ???
-                self.nodes.update({self.nodeNames[nodeIndex]:n})
+                    
+                # if not in the input layer...
+                if layerIndex is not 0
+                    for downC, weight in nodeIndex.downConnections.items():
+                        selectedParent = parents[random.randint(0,1)]
+                        # Select new connection weight
+                        newAgent.updateWeight(n, newAgent.nodes[downC], newWeight)
 
-        for layerIndex in range(0,len(layers)-1):
-            for nodeIndex in range(0,layers[layerIndex]):
-                nodeName = self.nodeNames[nodeIndex]
-                for i in range(0,layers[layerIndex+1]):
-                    selectedParent = parents[random.randint(0,1)]
-                    connectionWeight = selectedParent.nodes[nodeName]
-                    #MORE COMING SOON!
-                
-### IDEA: We should probably have a more abstracted thing going where
-# we create a NN using a given rule for establishing connection weights, so we
-# don't have to keep copying this same code from randNN() over and over.
