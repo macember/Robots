@@ -35,7 +35,7 @@ class gameMap:
         self.Matrix = matrix
 
         #Matrix color scheme:
-        # 0=land, 1=water, 3=food
+        # 1=land, 0=water, 3=food
 
         ###Switch variables                
         self.deathQuadrantOn = False #whether the game has a death quadrant
@@ -200,6 +200,31 @@ class gameMap:
         self.log+="ClockTicks:" + str(self.clock) + ";"
         self.log+="FoodCount:" + str(self.foodCount)
 
+    def desiredOutput(self):
+        #check if we can move toward food to get it. If so, its legitimate output
+        moveToFood = self.moveToFoodOutput()
+        if moveToFood!=[0,0,0,0]:
+            return moveToFood
+        else:
+            return self.smellOfFoodOutputComplex()
+        
+
+
+    def moveToFoodOutput(self):
+        ###checks if the agent can move one direction to get food
+        ###if the agent can, then desired output should be toward that food
+        ###otherwise, return [0,0,0,0]
+        retMatrix = [0,0,0,0]
+        if self.Matrix[self.playerPos[0]] [self.playerPos[1]-1] == 3: #food is up
+            retMatrix[0] = 1
+        if self.Matrix[self.playerPos[0]-1] [self.playerPos[1]] == 3: #food is left
+            retMatrix[1] = 1
+        if self.Matrix[self.playerPos[0]] [self.playerPos[1]+1] == 3: #food is down
+            retMatrix[2] = 1
+        if self.Matrix[self.playerPos[0]+1] [self.playerPos[1]] == 3: #food is right
+            retMatrix[3] = 1
+        return retMatrix
+
     ###Training functions for back prop
     def smellOfFoodOutputSimple(self):
         if self.foodPos == [-1,-1]:
@@ -263,38 +288,39 @@ class gameMap:
         #returns an array of four values, up left down right, representing whether food is seen in that direction
         ret = [0,0,0,0] #array to return
         ###up
-        p = self.playerPos
+        p = list(self.playerPos)
         sightColor = self.Matrix[p[0]][p[1]]
-        while(self.inMatrixBounds(p) and sightColor==0):
+        while(self.inMatrixBounds(p) and sightColor==1):
             p[1]-=1  #go up 
             sightColor = self.Matrix[p[0]][p[1]]
         if sightColor==3: #if we see food
             ret[0]=1
         ###left
-        p = self.playerPos
+        p = list(self.playerPos)
         sightColor = self.Matrix[p[0]][p[1]]
-        while(self.inMatrixBounds(p) and sightColor==0):
+        while(self.inMatrixBounds(p) and sightColor==1):
             p[0]-=1  #go left 
             sightColor = self.Matrix[p[0]][p[1]]
         if sightColor==3: #if we see food
             ret[1]=1
         ###down
-        p = self.playerPos
+        p = list(self.playerPos)
         sightColor = self.Matrix[p[0]][p[1]]
-        while(self.inMatrixBounds(p) and sightColor==0):
+        while(self.inMatrixBounds(p) and sightColor==1):
             p[1]+=1  #go down 
             sightColor = self.Matrix[p[0]][p[1]]
         if sightColor==3: #if we see food
             ret[2]=1
         ###right
-        p = self.playerPos
+        p = list(self.playerPos)
         sightColor = self.Matrix[p[0]][p[1]]
-        while(self.inMatrixBounds(p) and sightColor==0):
+        while(self.inMatrixBounds(p) and sightColor==1):
             p[0]+=1  #go right 
             sightColor = self.Matrix[p[0]][p[1]]
         if sightColor==3: #if we see food
             ret[3]=1
 
+        #print("Sight is: ", ret)
         return ret
         
                     
@@ -376,10 +402,11 @@ def getNNInput(board, senses):
             inputList.append(board.moveBuffer[1])
             inputList.append(board.moveBuffer[2])
             inputList.append(board.moveBuffer[3])
+            #print("In getNNInput, moveBuffer is: ", board.moveBuffer)
 
 #### clockInput  ####
 ### A number from 0 to 1, representing how soon until the food shifts
-    if "clockInpu" in senses:
+    if "clockInput" in senses:
         if senses["clockInput"]==True:
             #normalize timeUntilShift as clockInput
             clockInput = ( board.quadrantShiftTime - board.timeUntilShift() ) / board.quadrantShiftTime
@@ -405,7 +432,7 @@ def getNNInput(board, senses):
             sight = board.sight()
             for s in sight:
                 inputList.append(s)
-
+            
 
 
 #####TODO: ADD MORE SENSES #####---------------------------------
@@ -445,8 +472,9 @@ def simulateGame(net=None, logFile = ""):
         
         finished = False
         while not finished:
-            print(board.quadrant)
-            ##Process Game Events
+            board.desiredOutput()
+            senses = getSenses()
+            NNInput = getNNInput(board,senses)            ##Process Game Events
             for event in pygame.event.get():
                 if event.type==QUIT:
                     #pygame.quit()
@@ -507,7 +535,8 @@ def simulateGame(net=None, logFile = ""):
             outty = net.feedForward(activ)
             actualOutput = outty
             if backPropOn:
-                outputMatrix = board.smellOfFoodOutputComplex()
+                outputMatrix = board.desiredOutput()
+                #outputMatrix = board.smellOfFoodOutputComplex()
                 desiredOutput = net.moveListToOutputDict(outputMatrix)
                 net.backPropogation(actualOutput, desiredOutput)
                 
