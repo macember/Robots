@@ -64,9 +64,9 @@ class gameMap:
         self.quadrantBounds.append( [[20,30],[10,20]] )
         
         ###Neural net variables
-        self.NNClockTicks = self.quadrantShiftTime * 1000
+        
         self.moveBuffer = [0,0,0,0] #up, left, down, right
-        self.timeSinceFood = self.NNClockTicks
+        self.timeSinceFood = 100
         NNInputNode = 1
 
     def timeUntilShift(self):
@@ -444,7 +444,7 @@ def getNNInput(board, senses):
 
 
 #### MAIN GAME LOOP #####
-def simulateGame(net=None, logFile = ""):
+def simulateGame(net=None, NNClockCycles=50, logFile = ""):
     clockShiftCount = 0
    ### Determine Mode ###
     fromNN = net!=None
@@ -514,7 +514,7 @@ def simulateGame(net=None, logFile = ""):
         #backPropFunction = smellOfFoodOutputComplex  #which function we use for desired output in backpropogation
         
         finished = False
-        endGameClock = board.NNClockTicks
+        endGameClock = NNClockCycles*board.quadrantShiftTime
         ###Main game loop
         NNInput = {}
         while board.clock < endGameClock and not(finished):
@@ -576,7 +576,7 @@ def simulateGame(net=None, logFile = ""):
                         #sys.exit()
                         finished = True                
                 pygame.display.update()
-                fpsClock.tick(1)            
+                fpsClock.tick(10)            
 
 
 #####END NEURAL NET MODE -------------------------------------------------------------------        
@@ -651,8 +651,9 @@ def simulateGame(net=None, logFile = ""):
     if visualMode:
         pygame.quit()
     if net!=None:
-        return net.pickle()
-
+        pass
+        #return net.pickle()
+    return board.foodCount
 
 def logToDictionary(gameString):
     #first, split string by ***

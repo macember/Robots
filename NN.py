@@ -17,7 +17,6 @@ def sigmoid(alpha, x, nodey):
         return 1 / (1 + (math.e**(-1*alpha * x)))
     
 
-
 def createTestNN():
     N = NN()
     return N
@@ -92,6 +91,14 @@ class NN:
         if l!=None:
             self.randNN(l)
 
+
+    def exportConnections(self):
+        #exports ALL upConnections as a list in order
+        pass
+
+    def importConnections(self):
+        pass
+
     def areNodesReset(self):
         for n in self.nodes.values():
             if n.output!=0 or n.totalInput!=0 or n.error!=0:
@@ -123,6 +130,21 @@ class NN:
         else:
             print("updateWeight ERROR; Could not find given connection!")
             return False
+
+    def updateWeight(self, A, B, newWeight): #input: two nodes and a new weight
+        nameA = A.name
+        nameB = B.name
+        if nameB in A.upConnections:
+            A.upConnections[nameB] = newWeight
+            B.downConnections[nameA] = newWeight
+            return True
+        elif nameB in A.downConnections:
+            A.downConnections[nameB] = newWeight
+            B.upConnections[nameA] = newWeight
+            return True
+        else:
+            print("updateWeight ERROR; Could not find given connection!")
+            return False        
             
 
     def getDesiredOutput(self):
