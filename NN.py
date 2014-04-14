@@ -11,7 +11,7 @@ def sigmoid(alpha, x, nodey):
         return 1
     elif x<-10:
         #print("Abnormally small sigmoid value!")
-        nodey.printNode()
+        #nodey.printNode()
         return 0    
     else:
         return 1 / (1 + (math.e**(-1*alpha * x)))
