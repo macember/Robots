@@ -522,8 +522,8 @@ def simulateGame(net=None, NNClockCycles=50, logFile = ""):
           #####OTHER GAME STUFF ######              
             if board.clock%board.quadrantShiftTime == 0:
                 clockShiftCount+=1
-                if clockShiftCount%100==0:
-                    print(clockShiftCount)
+             #   if clockShiftCount%100==0:
+             #       print(clockShiftCount)
                 board.shiftQuadrant()
                 board.generateFood()
             senses = getSenses()
