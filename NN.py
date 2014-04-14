@@ -7,10 +7,10 @@ moveDict = {'up':0, 'left':1, 'down':2, 'right': 3} #keep track of order of move
 
 def sigmoid(alpha, x, nodey):
     if x>10:
-        print("Abnormally large sigmoid value!")
+        #print("Abnormally large sigmoid value!")
         return 1
     elif x<-10:
-        print("Abnormally small sigmoid value!")
+        #print("Abnormally small sigmoid value!")
         nodey.printNode()
         return 0    
     else:
@@ -130,21 +130,7 @@ class NN:
         else:
             print("updateWeight ERROR; Could not find given connection!")
             return False
-
-    def updateWeight(self, A, B, newWeight): #input: two nodes and a new weight
-        nameA = A.name
-        nameB = B.name
-        if nameB in A.upConnections:
-            A.upConnections[nameB] = newWeight
-            B.downConnections[nameA] = newWeight
-            return True
-        elif nameB in A.downConnections:
-            A.downConnections[nameB] = newWeight
-            B.upConnections[nameA] = newWeight
-            return True
-        else:
-            print("updateWeight ERROR; Could not find given connection!")
-            return False        
+      
             
 
     def getDesiredOutput(self):

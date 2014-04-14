@@ -201,7 +201,7 @@ class gameMap:
         self.log+="FoodCount:" + str(self.foodCount)
 
     def desiredOutput(self):
-        #check if we can move toward food to get it. If so, its legitimate output
+        #check if we can move one space toward food to get it. If so, its legitimate output
         moveToFood = self.moveToFoodOutput()
         if moveToFood!=[0,0,0,0]:
             return moveToFood
@@ -472,7 +472,6 @@ def simulateGame(net=None, NNClockCycles=50, logFile = ""):
         
         finished = False
         while not finished:
-            board.desiredOutput()
             senses = getSenses()
             NNInput = getNNInput(board,senses)            ##Process Game Events
             for event in pygame.event.get():
@@ -520,7 +519,13 @@ def simulateGame(net=None, NNClockCycles=50, logFile = ""):
         while board.clock < endGameClock and not(finished):
             #first, get all the inputs
 
-
+          #####OTHER GAME STUFF ######              
+            if board.clock%board.quadrantShiftTime == 0:
+                clockShiftCount+=1
+                if clockShiftCount%100==0:
+                    print(clockShiftCount)
+                board.shiftQuadrant()
+                board.generateFood()
             senses = getSenses()
 
             NNInput = getNNInput(board,senses)          
@@ -548,13 +553,7 @@ def simulateGame(net=None, NNClockCycles=50, logFile = ""):
             else:
                 print("Simulating from NN Error: Couldn't find a move from NN output!")
             
-          #####OTHER GAME STUFF ######              
-            if board.clock%board.quadrantShiftTime == 0:
-                clockShiftCount+=1
-                if clockShiftCount%100==0:
-                    print(clockShiftCount)
-                board.shiftQuadrant()
-                board.generateFood()
+
 
             if visualMode:
                 for l in board.locationsToUpdate:
@@ -643,8 +642,8 @@ def simulateGame(net=None, NNClockCycles=50, logFile = ""):
 
         
     #### Clean up ###
-    print("Out of game")
-    print("\tScore is: ", board.foodCount)
+    #print("Out of game")
+    #print("\tScore is: ", board.foodCount)
     board.cleanup()
     if not fromLog:
         writeLogToFile("output.txt", board.log)
