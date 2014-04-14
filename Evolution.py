@@ -60,6 +60,9 @@ class Population:
         # BREEDINGPAIRS: a list of tuples, each containing the name of
         # two NNs that should be bred (as established by the selection function)
         self.breedingPairs = []
+        # AVERAGEGENFITNESS: the current generation's average fitness.
+        # Updates during trainGeneration(), resets during createNewGeneration()
+        self.averageGenFitness = 0
 
     # RANDPOP
     # -----------------
@@ -82,10 +85,14 @@ class Population:
     # Trains each NN in population, for the amount of time specified
     # by the LIFETIME value
     def trainGeneration(self, cycles):
+        totalFitness = 0;
         # for each agent in the dictionary...
         for agentIndex in range(0,len(self.agents)):
             # train that agent LIFETIME times
-            self.agents[agentIndex].trainNN(self.lifetime)
+            curAgent = self.agents[agentIndex]
+            curAgent.trainNN(self.lifetime)
+            totalFitness += curAgent.fitnessScore
+        self.averageGenFitness = totalFitness / len(self.agents)        
     
     # SORTBYFITNESS
     # --------------------
@@ -113,14 +120,16 @@ class Population:
         
         # Use breeding func to move through list of breeding pairs,
         # and set the newly-created dictionary of agents as the new population
-        newGen = breedingFunc(breedingPairs, self.agents, self.nnSize)
+        newGen = self.breedingFunc(breedingPairs)
 
+        # Reset average fitness
+        averageGenFitness = 0
 
-    def breedingFuncA(self, mode):
+    def breedingFunc(self, mode):
         breedingPairs = self.breedingPairs
         agentDict = self.agents
         oldAgentDict = self.agents
-        newAgentDict = {}        
+        newAgentDict = {}
         for i,j in breedingPairs:
             parent1 = agentDict[i].net
             parent2 = agentDict[j].net
@@ -159,12 +168,21 @@ def runXGenerations(gens):
     breedingMode = 0 #for calling breedingFunc
     P = Population()
     P.randPop(10)
+    print("On generation 0")
+    print("Training generation")
     P.trainGeneration(500)
+    print("Average score for generation 0: ", P.averageGenFitness)
+    print("Creating new generation")
     P.createNewGeneration(selFuncA, breedingMode)
-    for genIndex in range(0,gens):
+    print("Finished creating new generation")
+    for genIndex in range(1,gens):
         print("On generation ", genIndex)
+        print("Training generation")
         P.trainGeneration(P.lifetime)
-        P.createNewGeneration(selFuncA, breedingFuncA)
+        print("Average score for generation ", genIndex, ": ", P.averageGenFitness)
+        print("Creating new generation")
+        P.createNewGeneration(selFuncA, breedingMode)
+        print("Finished creating new generations")
     
 # ============================
 # SELECTION FUNCTIONS
