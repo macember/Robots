@@ -1,6 +1,13 @@
 from NN import *
 from Robots_Game import *
 import random
+import copy
+
+Lamarck = False
+initialTrainingPeriod = True
+preTrainingTime = 1000
+lifetime = 30
+
 
 # =========================
 # THING I NEED IN NN CLASS
@@ -27,8 +34,15 @@ class Agent:
         self.net = N
         self.generation = 0
 
-    def trainNN(self, cycles=30):
+    def trainNN(self, cycles=lifetime):
+        beforeNet = copy.deepcopy(self.net)
+        print("BEFORE NET IS: ")
+        beforeNet.printNNCompact()
         self.fitnessScore = simulateGame(self.net, cycles)
+        if Lamarck==False: #we don't want to keep the training changes
+            self.net = beforeNet
+        print("AFTER NET IS: ")
+        self.net.printNNCompact()
         #in the process of simulating the game, the net is trained
 
 
@@ -49,19 +63,18 @@ class Population:
     def __init__(self):
         # AGENTS: a dictionary of NNs stored as NUMBER:NN
         self.agents = {}
-        self.middleNodeCount = 4
+        self.middleNodeCount = 6
         self.nnSize = []
         self.nnSize.append(getSensesNodeCount())
         self.nnSize.append(self.middleNodeCount)
         self.nnSize.append(4)
         # NNSIZE: 
         # LIFETIME: how many trials each NN gets before breeding
-        self.lifetime = 30
+        self.lifetime = lifetime
         # BREEDINGPAIRS: a list of tuples, each containing the name of
         # two NNs that should be bred (as established by the selection function)
         self.breedingPairs = []
         # AVERAGEGENFITNESS: the current generation's average fitness.
-        # Updates during trainGeneration(), resets during createNewGeneration()
         self.averageGenFitness = 0
 
     # RANDPOP
@@ -84,13 +97,16 @@ class Population:
     # ------------------
     # Trains each NN in population, for the amount of time specified
     # by the LIFETIME value
-    def trainGeneration(self, cycles):
+    def trainGeneration(self, cycles=None):
+        print("in TrainGeneration, size of pop is: ", len(self.agents))
+        print("Training generation for ", cycles)
         totalFitness = 0;
         # for each agent in the dictionary...
         for agentIndex in range(0,len(self.agents)):
             # train that agent LIFETIME times
             curAgent = self.agents[agentIndex]
-            curAgent.trainNN(self.lifetime)
+            trainingTime = cycles if cycles!=None else self.lifetime
+            curAgent.trainNN(trainingTime)
             totalFitness += curAgent.fitnessScore
         self.averageGenFitness = totalFitness / len(self.agents)        
     
@@ -116,12 +132,13 @@ class Population:
         sortedOldGen = self.sortByFitness()
         
         # Use selection func to create list of pairs to breed
-        breedingPairs = selectionFunc(sortedOldGen)
+        self.breedingPairs = selectionFunc(sortedOldGen)
         
         # Use breeding func to move through list of breeding pairs,
         # and set the newly-created dictionary of agents as the new population
-        newGen = self.breedingFunc(breedingPairs)
-
+        self.agents = self.breedingFunc(breedingMode)
+        
+        
         # Reset average fitness
         averageGenFitness = 0
 
@@ -130,10 +147,16 @@ class Population:
         agentDict = self.agents
         oldAgentDict = self.agents
         newAgentDict = {}
+        agentCounter = 0
         for i,j in breedingPairs:
             parent1 = agentDict[i].net
             parent2 = agentDict[j].net
-            mixNeuralNets(parent1,parent2,mode)
+            child = mixNeuralNets(parent1,parent2,mode)
+            A = Agent(child)
+            newAgentDict.update({agentCounter:A})
+            agentCounter+=1
+        return newAgentDict
+        
         
 
 
@@ -168,21 +191,23 @@ def runXGenerations(gens):
     breedingMode = 0 #for calling breedingFunc
     P = Population()
     P.randPop(10)
-    print("On generation 0")
-    print("Training generation")
-    P.trainGeneration(500)
+    print("\nOn generation 0")
+    if initialTrainingPeriod:
+        P.trainGeneration(preTrainingTime)
+    else:
+        P.trainGeneration()
     print("Average score for generation 0: ", P.averageGenFitness)
-    print("Creating new generation")
+
+    
     P.createNewGeneration(selFuncA, breedingMode)
-    print("Finished creating new generation")
+    
     for genIndex in range(1,gens):
-        print("On generation ", genIndex)
-        print("Training generation")
+        print("\nOn generation ", genIndex)
         P.trainGeneration(P.lifetime)
         print("Average score for generation ", genIndex, ": ", P.averageGenFitness)
-        print("Creating new generation")
+       # print("Creating new generation")
         P.createNewGeneration(selFuncA, breedingMode)
-        print("Finished creating new generations")
+       # print("Finished creating new generations")
     
 # ============================
 # SELECTION FUNCTIONS
