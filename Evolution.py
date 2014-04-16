@@ -36,12 +36,12 @@ class Agent:
 
     def trainNN(self, cycles=lifetime):
         beforeNet = copy.deepcopy(self.net)
-        print("BEFORE NET IS: ")
+        #print("BEFORE NET IS: ")
         beforeNet.printNNCompact()
         self.fitnessScore = simulateGame(self.net, cycles)
         if Lamarck==False: #we don't want to keep the training changes
             self.net = beforeNet
-        print("AFTER NET IS: ")
+       # print("AFTER NET IS: ")
         self.net.printNNCompact()
         #in the process of simulating the game, the net is trained
 
