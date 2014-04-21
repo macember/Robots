@@ -4,10 +4,10 @@ import random
 import copy
 
 GI = False #genomic imprinting
-initialTrainingPeriod = True
+initialTrainingPeriod = False
 preTrainingTime = 1000
-lifetime = 30
-Asexual = False
+lifetime = 20
+Asexual = True
 
 
 # =========================
@@ -99,7 +99,7 @@ class Population:
     # ------------------
     # Trains each NN in population, for the amount of time specified
     # by the LIFETIME value
-    def trainGeneration(self, cycles=None):
+    def (self, cycles=None):
         print("Training generation for ", cycles)
         totalFitness = 0;
         # for each agent in the dictionary...
@@ -245,9 +245,7 @@ def runXGenerations(gens, popSize=10):
     print("\nOn generation 0")
     if initialTrainingPeriod:
         P.trainInitialGeneration()
-    else:
-        P.trainGeneration()
-    print("Average score for generation 0: ", P.averageGenFitness)
+        print("Average score for generation 0: ", P.averageGenFitness)
 
     if  not Asexual:
         P.createNewGeneration(selFuncA, breedingMode)
@@ -255,7 +253,7 @@ def runXGenerations(gens, popSize=10):
         P.createNewGeneration(selFuncAsexual, breedingMode)
         
     
-    for genIndex in range(1,gens):
+    for genIndex in range(0,gens):
         print("\nOn generation ", genIndex)
         P.trainGeneration(P.lifetime)
         print("Average score for generation ", genIndex, ": ", P.averageGenFitness)
