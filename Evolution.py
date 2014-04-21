@@ -7,6 +7,7 @@ Lamarck = False
 initialTrainingPeriod = True
 preTrainingTime = 1000
 lifetime = 30
+Asexual = True
 
 
 # =========================
@@ -34,12 +35,12 @@ class Agent:
         self.net = N
         self.generation = 0
 
-    def trainNN(self, cycles=lifetime):
+    def trainNN(self, cycles=lifetime, initialTrainingPeriod=False):
         beforeNet = copy.deepcopy(self.net)
         #print("BEFORE NET IS: ")
         #beforeNet.printNNCompact()
         self.fitnessScore = simulateGame(self.net, cycles)
-        if Lamarck==False: #we don't want to keep the training changes
+        if Lamarck==False and initialTrainingPeriod==False: #we don't want to keep the training changes
             self.net = beforeNet
             
        # print("AFTER NET IS: ")
@@ -99,7 +100,6 @@ class Population:
     # Trains each NN in population, for the amount of time specified
     # by the LIFETIME value
     def trainGeneration(self, cycles=None):
-        print("in TrainGeneration, size of pop is: ", len(self.agents))
         print("Training generation for ", cycles)
         totalFitness = 0;
         # for each agent in the dictionary...
@@ -110,6 +110,20 @@ class Population:
             curAgent.trainNN(trainingTime)
             totalFitness += curAgent.fitnessScore
         self.averageGenFitness = totalFitness / len(self.agents)        
+
+
+    def trainInitialGeneration(self):
+        print("Training generation for ", preTrainingTime)
+        totalFitness = 0;
+        # for each agent in the dictionary...
+        for agentIndex in range(0,len(self.agents)):
+            # train that agent LIFETIME times
+            curAgent = self.agents[agentIndex]
+            trainingTime = preTrainingTime
+            curAgent.trainNN(trainingTime, True)
+            totalFitness += curAgent.fitnessScore
+        self.averageGenFitness = totalFitness / len(self.agents) 
+
     
     # SORTBYFITNESS
     # --------------------
@@ -117,7 +131,7 @@ class Population:
     # the agents' fitness scores
     def sortByFitness(self):
         sortedAgents = []
-        L = sorted(self.agents.items(), key= lambda kv : kv[1].fitnessScore)
+        L = sorted(self.agents.items(), key= lambda kv : kv[1].fitnessScore, reverse=True)
         return list(map(lambda ab:ab[0], L))
     
     # CREATENEWGENERATION
@@ -131,22 +145,23 @@ class Population:
 
         # Sort old generation by fitness
         sortedOldGen = self.sortByFitness()
-        
         # Use selection func to create list of pairs to breed
         self.breedingPairs = selectionFunc(sortedOldGen)
         
         # Use breeding func to move through list of breeding pairs,
         # and set the newly-created dictionary of agents as the new population
-        self.agents = self.breedingFunc(breedingMode)
-        
-        
+        if not Asexual:
+            self.agents = self.breedingFunc(breedingMode)
+        else:
+            self.agents = self.breedingFuncAsexual(breedingMode)
+
         # Reset average fitness
         averageGenFitness = 0
+
 
     def breedingFunc(self, mode):
         breedingPairs = self.breedingPairs
         agentDict = self.agents
-        oldAgentDict = self.agents
         newAgentDict = {}
         agentCounter = 0
         for i,j in breedingPairs:
@@ -158,7 +173,42 @@ class Population:
             agentCounter+=1
         return newAgentDict
         
+    def breedingFuncAsexual(self,mode=0):
+        breedingPairs = self.breedingPairs
+        agentDict = self.agents
+        newAgentDict = {}
+        agentCounter = 0
+        for i in breedingPairs:
+            for repetition in range(0,3): #for each net, make three children
+                child = mixNeuralNetAsexual(agentDict[i].net, mode)
+                A = Agent(child)
+                newAgentDict.update({agentCounter:A})
+                agentCounter+=1
+        return newAgentDict
         
+
+
+def mixNeuralNetAsexual(parent,mode=0):
+    majorMutationRate = 100 #mutate on average 1/100 times
+    minorMutationRate = 4
+    minMultiplier = .9
+    maxMultiplier = 1.1
+    layers = parent.layersSize
+    if mode==0:
+        child = NN(layers)
+        for nodey in child.nodes.values(): #for each node
+            for connection in nodey.upConnections.keys(): #for each node that its connected to
+                connectionWeight = parent.nodes[nodey.name].upConnections[connection]
+                if random.randint(0,majorMutationRate)==0:
+                    newConnectionWeight = random.uniform(-1,1)
+                elif random.randint(0,minorMutationRate)==0:
+                    multiplier = random.uniform(minMultiplier,maxMultiplier)
+                    newConnectionWeight = connectionWeight * multiplier
+                else:
+                    newConnectionWeight = connectionWeight
+                child.updateWeight(nodey, child.nodes[connection], newConnectionWeight)
+        return child
+                
 
 
 ### mixNeuralNets; Given two NNs and a mode (way of mixing), outputs a child NN
@@ -188,26 +238,32 @@ def mixNeuralNets(parent1, parent2, mode):
         return child
 
 
-def runXGenerations(gens):
+def runXGenerations(gens, popSize=10):
     breedingMode = 0 #for calling breedingFunc
     P = Population()
-    P.randPop(10)
+    P.randPop(popSize)
     print("\nOn generation 0")
     if initialTrainingPeriod:
-        P.trainGeneration(preTrainingTime)
+        P.trainInitialGeneration()
     else:
         P.trainGeneration()
     print("Average score for generation 0: ", P.averageGenFitness)
 
-    
-    P.createNewGeneration(selFuncA, breedingMode)
+    if  not Asexual:
+        P.createNewGeneration(selFuncA, breedingMode)
+    else:
+        P.createNewGeneration(selFuncAsexual, breedingMode)
+        
     
     for genIndex in range(1,gens):
         print("\nOn generation ", genIndex)
         P.trainGeneration(P.lifetime)
         print("Average score for generation ", genIndex, ": ", P.averageGenFitness)
        # print("Creating new generation")
-        P.createNewGeneration(selFuncA, breedingMode)
+        if not Asexual:       
+            P.createNewGeneration(selFuncA, breedingMode)
+        else:
+            P.createNewGeneration(selFuncAsexual, breedingMode)
        # print("Finished creating new generations")
     
 # ============================
@@ -218,9 +274,10 @@ def runXGenerations(gens):
 # represents all the agent pairs that should be bred
 
 def selFuncA(sortedOldGen):
+    print("sortedOldgen is: ", sortedOldGen, " fitness scores are: ")
     if len(sortedOldGen)<5:
         print("selFuncA error! Length shouldn't be less than 9")
-        
+
     breedingPairs = []
     for agentPos in range(0, len(sortedOldGen)//3):
         agent0 = sortedOldGen[agentPos]
@@ -230,6 +287,12 @@ def selFuncA(sortedOldGen):
         breedingPairs.append((agent0, agent1))
         breedingPairs.append((agent0, agent2))
         breedingPairs.append((agent0, agent3))
+    return breedingPairs
+
+def selFuncAsexual(sortedOldGen):
+    breedingPairs = []
+    for agentPos in range(0, len(sortedOldGen)//3):
+        breedingPairs.append(sortedOldGen[agentPos])
     return breedingPairs
 
 

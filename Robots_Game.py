@@ -1,8 +1,14 @@
 import pygame, sys, random
 from NN import *
 from pygame.locals import *
+from functools import *
+
 
 visualMode = False
+###used to permute senses
+getSensesFromPerm = False
+sensePerm = {}
+
 nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']    
 
 
@@ -359,16 +365,42 @@ def populateBoard(board, window):
             else:
                 pygame.draw.polygon(window, mapColor(board.Matrix[x][y]), ( (x*20, y*20), ((x*20)+20, y*20),((x*20)+20, (y*20)+20), (x*20, (y*20)+20)) )
 
+def powerset(lst):
+    return reduce(lambda result, x: result + [subset + [x] for subset in result],
+                  lst, [[]])
+
+def testAllSensePermutations():
+    outputList = []
+    global getSensesFromPerm
+    getSensesFromPerm = True
+    senseList = [ "lineSight", "timeSinceFood", "moveBuffer", "clockInput", "quadInput"]
+    allPerms = powerset(senseList)
+    for perm in allPerms: #for each permutation of senses
+        print("on sense permutation ", perm)
+        permDict = {} #create sense dictionary
+        for sensey in perm: 
+            permDict.update({sensey:True}) #add the sense to the dictionary
+        global sensePerm
+        sensePerm = permDict
+        inputNodeCount = getSensesNodeCount()
+        N = NN([inputNodeCount, 4, 4])
+        score = simulateGame(N, 2000)
+        print("finished, score is ", score)
+        outputList.append( (perm, score) )
+        
 
 def getSenses():
-    senses = {}
-    senses.update({"timeSinceFood": True})
-    senses.update({"moveBuffer": True})
-    senses.update({"clockInput": True})
-    senses.update({"quadInput": True})
-    senses.update({"lineSight": True})
-    senses.update({"smell": False})
-    return senses
+    if getSensesFromPerm:
+        return sensePerm
+    else:
+        senses = {}
+        senses.update({"timeSinceFood": True})
+        senses.update({"moveBuffer": True})
+        senses.update({"clockInput": True})
+        senses.update({"quadInput": True})
+        senses.update({"lineSight": True})
+        senses.update({"smell": False})
+        return senses
 
 def getSensesNodeCount():
     sensesSizeDict = { "timeSinceFood":1, "moveBuffer":4, 'clockInput':1, \
@@ -472,6 +504,7 @@ def simulateGame(net=None, NNClockCycles=50, logFile = ""):
         
         finished = False
         while not finished:
+
             senses = getSenses()
             NNInput = getNNInput(board,senses)            ##Process Game Events
             for event in pygame.event.get():
