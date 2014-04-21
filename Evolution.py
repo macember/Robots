@@ -99,7 +99,7 @@ class Population:
     # ------------------
     # Trains each NN in population, for the amount of time specified
     # by the LIFETIME value
-    def (self, cycles=None):
+    def trainGeneration(self, cycles=None):
         print("Training generation for ", cycles)
         totalFitness = 0;
         # for each agent in the dictionary...
