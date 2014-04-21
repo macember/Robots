@@ -7,7 +7,7 @@ Lamarck = False
 initialTrainingPeriod = True
 preTrainingTime = 1000
 lifetime = 30
-Asexual = True
+Asexual = False
 
 
 # =========================

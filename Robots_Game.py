@@ -369,12 +369,13 @@ def powerset(lst):
     return reduce(lambda result, x: result + [subset + [x] for subset in result],
                   lst, [[]])
 
-def testAllSensePermutations():
+def testAllSensePermutations(runningTime):
     outputList = []
     global getSensesFromPerm
     getSensesFromPerm = True
     senseList = [ "lineSight", "timeSinceFood", "moveBuffer", "clockInput", "quadInput"]
     allPerms = powerset(senseList)
+    print("Length of allperms is: ", len(allPerms))
     for perm in allPerms: #for each permutation of senses
         print("on sense permutation ", perm)
         permDict = {} #create sense dictionary
@@ -384,9 +385,10 @@ def testAllSensePermutations():
         sensePerm = permDict
         inputNodeCount = getSensesNodeCount()
         N = NN([inputNodeCount, 4, 4])
-        score = simulateGame(N, 2000)
+        score = simulateGame(N, runningTime)
         print("finished, score is ", score)
         outputList.append( (perm, score) )
+    return outputList
         
 
 def getSenses():
