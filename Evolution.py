@@ -3,7 +3,7 @@ from Robots_Game import *
 import random
 import copy
 
-Lamarck = False
+GI = False #genomic imprinting
 initialTrainingPeriod = True
 preTrainingTime = 1000
 lifetime = 30
@@ -40,7 +40,7 @@ class Agent:
         #print("BEFORE NET IS: ")
         #beforeNet.printNNCompact()
         self.fitnessScore = simulateGame(self.net, cycles)
-        if Lamarck==False and initialTrainingPeriod==False: #we don't want to keep the training changes
+        if GI==False and initialTrainingPeriod==False: #we don't want to keep the training changes
             self.net = beforeNet
             
        # print("AFTER NET IS: ")
