@@ -239,11 +239,12 @@ def mixNeuralNets(parent1, parent2, mode):
 
 
 def runXGenerations(gens, popSize=10):
+    outputData = {}
     breedingMode = 0 #for calling breedingFunc
     P = Population()
     P.randPop(popSize)
-    print("\nOn generation 0")
     if initialTrainingPeriod:
+        print("\nOn Traning Generation")
         P.trainInitialGeneration()
         print("Average score for generation 0: ", P.averageGenFitness)
 
@@ -257,12 +258,14 @@ def runXGenerations(gens, popSize=10):
         print("\nOn generation ", genIndex)
         P.trainGeneration(P.lifetime)
         print("Average score for generation ", genIndex, ": ", P.averageGenFitness)
+        outputData.update({genIndex:P.averageGenFitness})
        # print("Creating new generation")
         if not Asexual:       
             P.createNewGeneration(selFuncA, breedingMode)
         else:
             P.createNewGeneration(selFuncAsexual, breedingMode)
        # print("Finished creating new generations")
+    return outputData
     
 # ============================
 # SELECTION FUNCTIONS
