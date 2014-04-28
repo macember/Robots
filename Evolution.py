@@ -6,8 +6,11 @@ import copy
 GI = False #genomic imprinting
 initialTrainingPeriod = False
 preTrainingTime = 1000
-lifetime = 20
+lifetime = 50
 Asexual = True
+asexualLowerBound = .95
+asexualUpperBound = 1.05
+populationSize = 30
 
 
 # =========================
@@ -100,7 +103,7 @@ class Population:
     # Trains each NN in population, for the amount of time specified
     # by the LIFETIME value
     def trainGeneration(self, cycles=None):
-        print("Training generation for ", cycles)
+        print("Training generation of length ", len(self.agents), " for ", cycles, " gamecycles each")
         totalFitness = 0;
         # for each agent in the dictionary...
         for agentIndex in range(0,len(self.agents)):
@@ -174,25 +177,69 @@ class Population:
         return newAgentDict
         
     def breedingFuncAsexual(self,mode=0):
-        breedingPairs = self.breedingPairs
-        agentDict = self.agents
+        breedingPairs = []
+        for i in range(0, len(self.breedingPairs)//3):
+            breedingPairs.append(self.breedingPairs[i])
         newAgentDict = {}
         agentCounter = 0
         for i in breedingPairs:
             for repetition in range(0,3): #for each net, make three children
-                child = mixNeuralNetAsexual(agentDict[i].net, mode)
+                child = mixNeuralNetAsexual(self.agents[i].net, mode)
                 A = Agent(child)
                 newAgentDict.update({agentCounter:A})
                 agentCounter+=1
         return newAgentDict
+
+    def breedingFuncAsexual2(self, mode=0):
+        #top 10% of agents get half of the breeding
+        #top 20% get other half
+        newAgentDict = {}
+        totalAgentsToBreed = len(self.breedingPairs)
+        firstHalfToBreed = totalAgentsToBreed // 2
+        secondHalfToBreed = totalAgentsToBreed - firstHalfToBreed
+
+        breedingFirstHalf = []
+        breedingSecondHalf = []
+        cutoffFirstHalf = len(self.breedingPairs)//10
+        cutoffSecondHalf = cutoffFirstHalf * 3
+        if cutoffFirstHalf==0:
+            print("WARNING: Trying to call breedingFuncAsexual with less than 10 agents. You're going to have a bad time")
+            return
+        for i in range(0, cutoffFirstHalf):
+            breedingFirstHalf.append(i)
+        for i in range(cutoffFirstHalf, cutoffSecondHalf):
+            breedingSecondHalf.append(i)
+
+        #now we have the top 10% in breedingFirstHalf and next 20% in breedingSecondHalf
+        counter = firstIndex = secondIndex = totalCounter = 0
+        for i in range(0, firstHalfToBreed):
+            child = mixNeuralNetAsexual(self.agents[breedingFirstHalf[firstIndex]].net, mode)
+            A = Agent(child)
+            newAgentDict.update({totalCounter:A})
+            totalCounter+=1
+            firstIndex+=1
+            if firstIndex>=len(breedingFirstHalf):
+                firstIndex = 0
+        
+        for i in range(0, secondHalfToBreed):
+            child = mixNeuralNetAsexual(self.agents[breedingSecondHalf[secondIndex]].net, mode)
+            A = Agent(child)
+            newAgentDict.update({totalCounter:A})
+            totalCounter+=1
+            secondIndex+=1
+            if secondIndex>=len(breedingSecondHalf):
+                secondIndex=0
+
+        return newAgentDict
+    
         
 
 
 def mixNeuralNetAsexual(parent,mode=0):
     majorMutationRate = 100 #mutate on average 1/100 times
     minorMutationRate = 4
-    minMultiplier = .9
-    maxMultiplier = 1.1
+    minMultiplier = asexualLowerBound
+    maxMultiplier = asexualUpperBound
     layers = parent.layersSize
     if mode==0:
         child = NN(layers)
@@ -247,12 +294,11 @@ def runXGenerations(gens, popSize=10):
         print("\nOn Traning Generation")
         P.trainInitialGeneration()
         print("Average score for generation 0: ", P.averageGenFitness)
-
-    if  not Asexual:
-        P.createNewGeneration(selFuncA, breedingMode)
-    else:
-        P.createNewGeneration(selFuncAsexual, breedingMode)
-        
+        if  not Asexual:
+            P.createNewGeneration(selFuncA, breedingMode)
+        else:
+            P.createNewGeneration(selFuncAsexual, breedingMode)
+            
     
     for genIndex in range(0,gens):
         print("\nOn generation ", genIndex)
@@ -291,10 +337,7 @@ def selFuncA(sortedOldGen):
     return breedingPairs
 
 def selFuncAsexual(sortedOldGen):
-    breedingPairs = []
-    for agentPos in range(0, len(sortedOldGen)//3):
-        breedingPairs.append(sortedOldGen[agentPos])
-    return breedingPairs
+    return sortedOldGen
 
 
 # ============================

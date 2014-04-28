@@ -75,6 +75,19 @@ def testFeedForward():
     return N
 
 
+def NNdistance(NN1, NN2):
+    #distance: sum up the absolute value of the dfferences between all connections
+    #assumes identical topology between both NNs to work
+    if NN1.layersSize!=NN2.layersSize:
+        print("Warning: Trying to call NNdistance on two NNs of different layers size!")
+        return -1
+    else:
+        totalSum = 0.0
+        for nodey in NN1.nodes.values(): #for each node in NN1
+            for upC in NN1
+
+        
+
 class NN:
     nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']    
     def __init__(self, l=None, dna=""):
