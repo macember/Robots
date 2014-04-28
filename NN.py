@@ -83,10 +83,36 @@ def NNdistance(NN1, NN2):
         return -1
     else:
         totalSum = 0.0
-        for nodey in NN1.nodes.values(): #for each node in NN1
-            for upC in NN1
+        for name,nodey in NN1.nodes.items(): #for each node in NN1
+            for connect, weight1 in nodey.upConnections.items():
+                weight2 = NN2.nodes[name].upConnections[connect]
+                diff = abs(weight1-weight2)
+                totalSum+=diff
+        return totalSum
 
+def testSimilarity(NN1,NN2):
+    numTrials = 1000
+    similarityCount = 0
+    nodeNames = ['a','b','c','d','e','f','g','h','i','j','k']
+    NN1Size = NN1.layersSize[1]
+    NN2Size = NN2.layersSize[1]
+    for i in range(numTrials):          # each iteration is a trial
         
+        # First we create the activations and use them to generate our outputs.
+        activation = {}
+        for i in range(NN1Size):        # filling the activation for NN1
+            activation[nodeNames[i]] = random.uniform(-1,1)
+        outputDict1 = NN1.feedForward(activation)
+        for i in range(NN2Size):        # filling the activation for NN2
+            activation[nodeNames[i]] = random.uniform(-1,1)
+        outputDict2 = NN2.feedForward(activation)
+        
+        # Now we compare the output between NNs.
+        if outputDict1 == outputDict2:
+            similarityCount += 1
+            
+    similarity = similarityCount / numTrials
+    return similarity        
 
 class NN:
     nodeNames = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']    

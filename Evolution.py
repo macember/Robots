@@ -11,6 +11,7 @@ Asexual = True
 asexualLowerBound = .95
 asexualUpperBound = 1.05
 populationSize = 30
+robustOutput = False #whether you want the full output or just the fitness score for runXGenerations
 
 
 # =========================
@@ -103,7 +104,8 @@ class Population:
     # Trains each NN in population, for the amount of time specified
     # by the LIFETIME value
     def trainGeneration(self, cycles=None):
-        print("Training generation of length ", len(self.agents), " for ", cycles, " gamecycles each")
+        if robustOutput:
+            print("Training generation of length ", len(self.agents), " for ", cycles, " gamecycles each")
         totalFitness = 0;
         # for each agent in the dictionary...
         for agentIndex in range(0,len(self.agents)):
@@ -112,7 +114,7 @@ class Population:
             trainingTime = cycles if cycles!=None else self.lifetime
             curAgent.trainNN(trainingTime)
             totalFitness += curAgent.fitnessScore
-        self.averageGenFitness = totalFitness / len(self.agents)        
+        self.averageGenFitness = totalFitness / len(self.agents) / lifetime     
 
 
     def trainInitialGeneration(self):
@@ -285,15 +287,16 @@ def mixNeuralNets(parent1, parent2, mode):
         return child
 
 
-def runXGenerations(gens, popSize=10):
+def runXGenerations(gens):
+    print("About to run ", gens, " Generations with asexual= ", Asexual, "; Genomic imprinting= ", GI, "; Lifetime= ", lifetime, "; initialTrainingPeriod= ", initialTrainingPeriod, "; preTrianingTime= ", preTrainingTime, "; populationSize= ", populationSize)
     outputData = {}
     breedingMode = 0 #for calling breedingFunc
     P = Population()
-    P.randPop(popSize)
+    P.randPop(populationSize)
     if initialTrainingPeriod:
         print("\nOn Traning Generation")
         P.trainInitialGeneration()
-        print("Average score for generation 0: ", P.averageGenFitness)
+        print("Average score for training generation is: ", P.averageGenFitness)
         if  not Asexual:
             P.createNewGeneration(selFuncA, breedingMode)
         else:
@@ -301,9 +304,14 @@ def runXGenerations(gens, popSize=10):
             
     
     for genIndex in range(0,gens):
-        print("\nOn generation ", genIndex)
+        if robustOutput:
+            print("\nOn generation ", genIndex)
         P.trainGeneration(P.lifetime)
-        print("Average score for generation ", genIndex, ": ", P.averageGenFitness)
+        if robustOutput:
+            print("Average score for generation ", genIndex, ": ", P.averageGenFitness)
+        else:
+            outputString = str(genIndex) + "\t" + str(P.averageGenFitness)
+            print(outputString)
         outputData.update({genIndex:P.averageGenFitness})
        # print("Creating new generation")
         if not Asexual:       
